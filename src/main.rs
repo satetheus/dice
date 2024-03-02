@@ -11,13 +11,18 @@ use regex::Regex;
 fn parse_dice(dice_spec: &str) -> (i32, i32, i32) {
     // input ex: 3d10+5, the +5 is optional
     //TODO this needs error handling
-    let dice_regex = Regex::new(r#"(?<count>\d+)d(?<sides>\d+)\+*(?<plus>\d+)*"#).unwrap();
+    let dice_regex = Regex::new(r#"(?<count>\d+)*d(?<sides>\d+)\+*(?<plus>\d+)*"#).unwrap();
     let dice: Vec<(i32, i32, i32)> = dice_regex.captures_iter(dice_spec).map(|c| {
-        //TODO this needs to replace None with 1
-        let count: i32 = c.name("count").unwrap().as_str().parse::<i32>().expect("reason1");
-        let sides: i32 = c.name("sides").unwrap().as_str().parse::<i32>().expect("reason2");
-        //TODO this needs to replace None with 0
-        let plus: i32 = c.name("plus").unwrap().as_str().parse::<i32>().expect("reason3");
+        let count: i32 = match c.name("count") {
+            Some(string) => string.as_str().parse::<i32>().expect("reason1"),
+            None => 1
+        };
+        let sides: i32 = c.name("sides").unwrap().as_str().parse::<i32>()
+            .expect("A valid dice number is required");
+        let plus: i32 = match c.name("plus") {
+            Some(string) => string.as_str().parse::<i32>().expect("reason3"),
+            None => 0
+        };
         (count, sides, plus)
     }).collect();
 
