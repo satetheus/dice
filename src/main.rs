@@ -2,14 +2,9 @@
 use std::env;
 use rand::distributions::{Distribution, Uniform};
 use regex::Regex;
-// accept user input of \d\+d\d\+{+\d\+}*, ex: "2d10" or "1d20+1"
-// run random in range of the dice size, add the plus specified, the number of times specified
-// return a vector of the random numbers
-// create option for sum, advantage, & disadvantage
 
 
 fn parse_dice(dice_spec: &str) -> (i32, i32, i32) {
-    // input ex: 3d10+5, the +5 is optional
     //TODO this needs error handling
     let dice_regex = Regex::new(r#"(?<count>\d+)*d(?<sides>\d+)\+*(?<plus>\d+)*"#).unwrap();
     let dice: Vec<(i32, i32, i32)> = dice_regex.captures_iter(dice_spec).map(|c| {
