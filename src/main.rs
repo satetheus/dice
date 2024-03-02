@@ -45,7 +45,7 @@ fn roll_dice(dice: (i32, i32, i32)) -> Vec<i32> {
 
 
 fn advantage(rolls: Vec<i32>) -> i32 {
-    1
+    rolls.iter().max()
 }
 
 
