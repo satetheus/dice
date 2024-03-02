@@ -50,7 +50,7 @@ fn advantage(rolls: Vec<i32>) -> i32 {
 
 
 fn disadvantage(rolls: Vec<i32>) -> i32 {
-    1
+    rolls.iter().min()
 }
 
 
