@@ -55,7 +55,7 @@ fn disadvantage(rolls: Vec<i32>) -> i32 {
 
 
 fn sum_rolls(rolls: Vec<i32>) -> i32 {
-    1
+    rolls.iter().sum()
 }
 
 
