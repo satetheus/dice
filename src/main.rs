@@ -71,3 +71,19 @@ fn main() {
         println!("{:?}", &rolls);
     }
 }
+
+
+
+#[cfg(test)]
+mod tests {
+    use crate::parse_dice;
+
+    #[test]
+    fn test_parse_dice() {
+        assert_eq!((1,10,0), parse_dice("d10"));
+        assert_eq!((1,10,0), parse_dice("1d10"));
+        assert_eq!((1,10,0), parse_dice("1d10+0"));
+        assert_eq!((10,6,3), parse_dice("10d6+3"));
+        assert_eq!((10,6,3), parse_dice("10d6+3+5"));
+    }
+}
