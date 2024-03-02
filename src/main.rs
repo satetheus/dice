@@ -64,5 +64,16 @@ fn main() {
     let dice_spec = parse_dice(&args[1]);
     let rolls = roll_dice(dice_spec);
 
-    println!("{:?}", rolls);
+    if args.len() > 2 {
+        match args[2].as_str() {
+            "adv" => println!("{:?}", advantage(&rolls)),
+            "dis" => println!("{:?}", disadvantage(&rolls)),
+            "sum" => println!("{:?}", sum_rolls(&rolls)),
+            _ => println!("{:?}", &rolls)
+        }
+    }
+
+    else {
+        println!("{:?}", &rolls);
+    }
 }
