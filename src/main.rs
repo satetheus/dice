@@ -9,13 +9,13 @@ fn parse_dice(dice_spec: &str) -> (i32, i32, i32) {
     let dice_regex = Regex::new(r#"(?<count>\d+)*d(?<sides>\d+)\+*(?<plus>\d+)*"#).unwrap();
     let dice: Vec<(i32, i32, i32)> = dice_regex.captures_iter(dice_spec).map(|c| {
         let count: i32 = match c.name("count") {
-            Some(string) => string.as_str().parse::<i32>().expect("reason1"),
+            Some(string) => string.as_str().parse::<i32>().expect(""),
             None => 1
         };
         let sides: i32 = c.name("sides").unwrap().as_str().parse::<i32>()
             .expect("A valid dice number is required");
         let plus: i32 = match c.name("plus") {
-            Some(string) => string.as_str().parse::<i32>().expect("reason3"),
+            Some(string) => string.as_str().parse::<i32>().expect(""),
             None => 0
         };
         (count, sides, plus)
