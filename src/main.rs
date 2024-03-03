@@ -5,15 +5,13 @@ use regex::Regex;
 
 
 fn parse_dice(dice_spec: &str) -> (i32, i32, i32) {
-    //TODO this needs error handling
-    let dice_regex = Regex::new(r"(?<count>\d+)*d(?<sides>\d+)\+*(?<plus>\d+)*").unwrap();
+    let dice_regex = Regex::new(r"(?<count>\d+)*d(?<sides>\d+)\+*(?<plus>-*\d+)*").unwrap();
     let dice: Vec<(i32, i32, i32)> = dice_regex.captures_iter(dice_spec).map(|c| {
         let count: i32 = match c.name("count") {
             Some(string) => string.as_str().parse::<i32>().expect(""),
             None => 1
         };
-        let sides: i32 = c.name("sides").unwrap().as_str().parse::<i32>()
-            .expect("A valid dice number is required");
+        let sides: i32 = c.name("sides").unwrap().as_str().parse::<i32>().expect("");
         let plus: i32 = match c.name("plus") {
             Some(string) => string.as_str().parse::<i32>().expect(""),
             None => 0
@@ -55,7 +53,17 @@ fn sum_rolls(rolls: &Vec<i32>) -> i32 {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let dice_spec = parse_dice(&args[1]);
+
+    let re = Regex::new(r"\d*d\d+\+*\d*").unwrap();
+    let dice_spec = match re.is_match(&args[1]) {
+        true => parse_dice(&args[1]),
+        false => {
+            println!("1st parameter should be a valid dice format. Ex.: 1d20+1 or d10. \
+                     We rolled a d20 for you in case that's what you wanted.");
+            parse_dice("1d20")
+        }
+    };
+
     let rolls = roll_dice(dice_spec);
 
     if args.len() > 2 {
