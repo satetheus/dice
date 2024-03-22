@@ -52,7 +52,11 @@ fn sum_rolls(rolls: &Vec<i32>) -> i32 {
 
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let mut args: Vec<String> = env::args().collect();
+
+    if args.len() < 2 {
+        args.push("this will trigger the invalid dice format error".to_owned());
+    }
 
     let re = Regex::new(r"\d*d\d+\+*\d*").unwrap();
     let dice_spec = match re.is_match(&args[1]) {
