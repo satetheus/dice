@@ -22,13 +22,13 @@ jobs:
           override: true
 
       - name: Build
-        run: cargo build --all --release && strip target/release/PROJECT_NAME && mv target/release/PROJECT_NAME target/release/PROJECT_NAME_amd64
+        run: cargo build --all --release && strip target/release/dice && mv target/release/dice target/release/dice_amd64
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            target/release/PROJECT_NAME_amd64
+            target/release/dice_amd64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -52,7 +52,7 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          files: target/release/PROJECT_NAME.exe
+          files: target/release/dice.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -72,12 +72,12 @@ jobs:
           override: true
 
       - name: Build for mac
-        run: cargo build --all --release && strip target/release/PROJECT_NAME && mv target/release/PROJECT_NAME target/release/PROJECT_NAME_darwin
+        run: cargo build --all --release && strip target/release/dice && mv target/release/dice target/release/dice_darwin
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            target/release/PROJECT_NAME_darwin
+            target/release/dice_darwin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
