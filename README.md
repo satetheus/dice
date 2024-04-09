@@ -23,6 +23,7 @@ Simple utility to roll dice from the command line/terminal using "1d10+0" style 
 ### Dice Notation
 This program supports basic [dice notation](https://en.wikipedia.org/wiki/Dice_notation). Multiplication, division, & parenthesis are not supported yet but likely will be in the future.
  - `dice 1d10` will "roll" one dice with 10 sides.
+ - `dice d20` will "roll" one dice with 20 sides.
  - `dice 100d20+1` will "roll" 100 dice with 20 sides & add 1 to each.
  - `dice 20d37-24` will "roll" 20 dice with 37 sides & subtract 24 from each.
 
