@@ -21,9 +21,10 @@ Simple utility to roll dice from the command line/terminal using "1d10+0" style 
 
 ## Usage
 ### dice syntax
-`dice 1d10` will "roll" one dice with 10 sides.
-`dice 100d20+1` will "roll" 100 dice with 20 sides & add 1 to each.
-`dice 20d37-24` will "roll" 20 dice with 37 sides & subtract 24 from each.
+This program supports basic [dice notation](https://en.wikipedia.org/wiki/Dice_notation). Multiplication, division, & parenthesis are not supported yet but likely will be in the future.
+ - `dice 1d10` will "roll" one dice with 10 sides.
+ - `dice 100d20+1` will "roll" 100 dice with 20 sides & add 1 to each.
+ - `dice 20d37-24` will "roll" 20 dice with 37 sides & subtract 24 from each.
 
 ### unrecognized formatting
 Any unrecognized format (including no dice specifier) will output a warning & the result of a 1d20, assuming that it was what the user wanted.
@@ -38,6 +39,7 @@ Commands must come after the dice specifier with a space between. Otherwise, the
 Only 1 command can be used at a time.
 
 | name | description                                                                        | example           | example output |
+| ---- | ------------                                                                       | -------           | -------------- |
 | adv  | selects the highest total roll out of all rolled dice, including the plus or minus | `dice 2d20 adv`   | `19`           |
 | dis  | selects the lowest total roll out of all rolled dice, including the plus or minus  | `dice 2d20+1 dis` | `8`            |
 | sum  | sums all rolled dice including the plus or minus                                   | `dice 10d4 sum`   | `23`           |
