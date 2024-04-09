@@ -20,14 +20,14 @@ Simple utility to roll dice from the command line/terminal using "1d10+0" style 
   - the binary will be "targets/releases/dice", you can move this to /usr/bin/ or use it in place
 
 ## Usage
-### dice syntax
+### Dice Notation
 This program supports basic [dice notation](https://en.wikipedia.org/wiki/Dice_notation). Multiplication, division, & parenthesis are not supported yet but likely will be in the future.
  - `dice 1d10` will "roll" one dice with 10 sides.
  - `dice 100d20+1` will "roll" 100 dice with 20 sides & add 1 to each.
  - `dice 20d37-24` will "roll" 20 dice with 37 sides & subtract 24 from each.
 
-### unrecognized formatting
-Any unrecognized format (including no dice specifier) will output a warning & the result of a 1d20, assuming that it was what the user wanted.
+### Unrecognized Formatting
+Any unrecognized format (including no dice notation) will output a warning & the result of a 1d20, assuming that it was what the user wanted.
 ex: `dice Hello there!` will output:
 ```
 1st parameter should be a valid dice format. Ex.: 1d20+1 or d10. We rolled a d20 for you in case that's what you wanted.
@@ -35,7 +35,7 @@ ex: `dice Hello there!` will output:
 ```
 
 ### Commands
-Commands must come after the dice specifier with a space between. Otherwise, the program will treat it as unrecognized formatting like in the above section.
+Commands must come after the dice notation with a space between. Otherwise, the program will treat it as unrecognized formatting like in the above section.
 Only 1 command can be used at a time.
 
 | name | description                                                                        | example           | example output |
