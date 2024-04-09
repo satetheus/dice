@@ -4,20 +4,20 @@ Simple utility to roll dice from the command line/terminal using "1d10+0" style 
 ## Installation
 ### Linux AMD64 Releases
   - Download latest release link: https://github.com/satetheus/dice/releases/latest/download/dice_amd64
-  - rename `dice_amd64` to `dice` & move it to /usr/bin/ if you would like to call it like: `dice 1d10`
+  - Rename `dice_amd64` to `dice` & move it to /usr/bin/ if you would like to call it like: `dice 1d10`
 
 ### Windows Releases
   - Download latest release link: https://github.com/satetheus/dice/releases/latest/download/dice.exe
 
 ### Mac Releases
   - Download latest release link: https://github.com/satetheus/dice/releases/latest/download/dice_darwin
-  - rename `dice_darwin` to `dice` & move it to /usr/bin/ if you would like to call it like: `dice 1d10`
+  - Rename `dice_darwin` to `dice` & move it to /usr/bin/ if you would like to call it like: `dice 1d10`
 
 ### Compile binary
   - Install rust if not already installed
-  - clone repo
-  - run `cargo build -r`
-  - the binary will be "targets/releases/dice", you can move this to /usr/bin/ or use it in place
+  - Clone repo
+  - Run `cargo build -r`
+  - The binary will be "targets/releases/dice", you can move this to /usr/bin/ or use it in place
 
 ## Usage
 ### Dice Notation
@@ -38,8 +38,8 @@ ex: `dice Hello there!` will output:
 Commands must come after the dice notation with a space between. Otherwise, the program will treat it as unrecognized formatting like in the above section.
 Only 1 command can be used at a time.
 
-| name | description                                                                        | example           | example output |
-| ---- | ------------                                                                       | -------           | -------------- |
-| adv  | selects the highest total roll out of all rolled dice, including the plus or minus | `dice 2d20 adv`   | `19`           |
-| dis  | selects the lowest total roll out of all rolled dice, including the plus or minus  | `dice 2d20+1 dis` | `8`            |
-| sum  | sums all rolled dice including the plus or minus                                   | `dice 10d4 sum`   | `23`           |
+| name | description                                                                         | example           | example output |
+| ---- | -------------                                                                       | -------           | -------------- |
+| adv  | Selects the highest total roll out of all rolled dice, including the plus or minus. | `dice 2d20 adv`   | `19`           |
+| dis  | Selects the lowest total roll out of all rolled dice, including the plus or minus.  | `dice 2d20+1 dis` | `8`            |
+| sum  | Sums all rolled dice including the plus or minus.                                   | `dice 10d4 sum`   | `23`           |
