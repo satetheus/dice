@@ -1,5 +1,5 @@
 # Dice
-Simple utility to roll dice from the command line/terminal using "1d10+0" style format.
+Simple utility to roll dice from the command line/terminal using "1d10+0" dice notation.
 
 ## Installation
 ### Linux AMD64 Releases
