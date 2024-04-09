@@ -3,14 +3,14 @@ Simple utility to roll dice from the command line/terminal using "1d10+0" style 
 
 ## Installation
 ### Linux AMD64 Releases
-  - Download latest release link: https://github.com/satetheus/dice/releases/latest/download/dice_amd64
+  - Download latest binary: [link](https://github.com/satetheus/dice/releases/latest/download/dice_amd64)
   - Rename `dice_amd64` to `dice` & move it to /usr/bin/ if you would like to call it like: `dice 1d10`
 
 ### Windows Releases
-  - Download latest release link: https://github.com/satetheus/dice/releases/latest/download/dice.exe
+  - Download latest binary: [link](https://github.com/satetheus/dice/releases/latest/download/dice.exe)
 
 ### Mac Releases
-  - Download latest release link: https://github.com/satetheus/dice/releases/latest/download/dice_darwin
+  - Download latest binary: [link](https://github.com/satetheus/dice/releases/latest/download/dice_darwin)
   - Rename `dice_darwin` to `dice` & move it to /usr/bin/ if you would like to call it like: `dice 1d10`
 
 ### Compile binary
