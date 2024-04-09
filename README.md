@@ -14,7 +14,7 @@ Simple utility to roll dice from the command line/terminal using "1d10+0" style 
   - Rename `dice_darwin` to `dice` & move it to /usr/bin/ if you would like to call it like: `dice 1d10`
 
 ### Compile binary
-  - Install rust if not already installed
+  - [Install Rust](https://rustup.rs/) if not already installed
   - Clone repo
   - Run `cargo build -r`
   - The binary will be "targets/releases/dice", you can move this to /usr/bin/ or use it in place
