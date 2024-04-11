@@ -83,7 +83,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::parse_dice;
+    use crate::{advantage, disadvantage, parse_dice, roll_dice, sum_rolls};
 
     #[test]
     fn test_parse_dice() {
@@ -96,7 +96,36 @@ mod tests {
 
     #[test]
     fn test_roll_dice() {
-        // roll large number of dice & check it matches averages within reason
-        // roll large number of dice & check if all expected numbers show up
+        // check upper range
+        assert!(!roll_dice((100000, 10, 0)).contains(&0));
+        // check lower range
+        assert!(!roll_dice((100000, 10, 0)).contains(&11));
+    }
+
+    #[test]
+    fn test_adv() {
+        assert_eq!(10, advantage(&[10, 3, 5]));
+        assert_eq!(99, advantage(&[99, 50, 32, 27]));
+        assert_eq!(5, advantage(&[5]));
+        assert_eq!(19, advantage(&[19, 19]));
+        assert_eq!(19, advantage(&[19, 13]));
+    }
+
+    #[test]
+    fn test_dis() {
+        assert_eq!(3, disadvantage(&[10, 3, 5]));
+        assert_eq!(27, disadvantage(&[99, 50, 32, 27]));
+        assert_eq!(5, disadvantage(&[5]));
+        assert_eq!(19, disadvantage(&[19, 19]));
+        assert_eq!(13, disadvantage(&[19, 13]));
+    }
+
+    #[test]
+    fn test_sum() {
+        assert_eq!(18, sum_rolls(&[10, 3, 5]));
+        assert_eq!(208, sum_rolls(&[99, 50, 32, 27]));
+        assert_eq!(5, sum_rolls(&[5]));
+        assert_eq!(38, sum_rolls(&[19, 19]));
+        assert_eq!(32, sum_rolls(&[19, 13]));
     }
 }
