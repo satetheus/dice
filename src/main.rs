@@ -100,6 +100,8 @@ mod tests {
         assert!(!roll_dice((100000, 10, 0)).contains(&0));
         // check lower range
         assert!(!roll_dice((100000, 10, 0)).contains(&11));
+        // check roll count
+        assert_eq!(roll_dice((100000, 10, 0)).len(), 100000);
     }
 
     #[test]
