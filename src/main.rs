@@ -10,12 +10,11 @@ struct Dice {
     plus: i32,
 }
 
+#[derive(Debug)]
 struct Rolls {
-    rolls: Vec<i32>,
+    results: Vec<i32>,
     max: i32,
-    max_count: i32,
     min: i32,
-    min_count: i32,
 }
 
 impl From<&str> for Dice {
@@ -46,7 +45,7 @@ impl From<&str> for Dice {
 }
 
 impl Dice {
-    fn roll(&self) -> Vec<i32> {
+    fn roll(&self) -> Rolls {
         let mut rng = rand::thread_rng();
         let die_size = Uniform::from(1..=self.sides);
         let mut rolls = vec![];
@@ -55,20 +54,24 @@ impl Dice {
             rolls.push(die_size.sample(&mut rng) + self.plus);
         }
 
-        rolls
+        Rolls {
+            results: rolls,
+            max: self.sides + self.plus,
+            min: 1 + self.plus,
+        }
     }
 }
 
-fn advantage(rolls: &[i32]) -> i32 {
-    *rolls.iter().max().unwrap()
+fn advantage(rolls: &Rolls) -> i32 {
+    *rolls.results.iter().max().unwrap()
 }
 
-fn disadvantage(rolls: &[i32]) -> i32 {
-    *rolls.iter().min().unwrap()
+fn disadvantage(rolls: &Rolls) -> i32 {
+    *rolls.results.iter().min().unwrap()
 }
 
-fn sum_rolls(rolls: &[i32]) -> i32 {
-    rolls.iter().sum::<i32>()
+fn sum_rolls(rolls: &Rolls) -> i32 {
+    rolls.results.iter().sum::<i32>()
 }
 
 fn explode_critical(rolls: Rolls) -> Rolls {
@@ -98,17 +101,17 @@ fn main() {
         }
     };
 
-    let rolls = dice_spec.roll();
+    let mut rolls = dice_spec.roll();
 
     if args.len() > 2 {
         match args[2].as_str() {
             "adv" => println!("{:?}", advantage(&rolls)),
             "dis" => println!("{:?}", disadvantage(&rolls)),
             "sum" => println!("{:?}", sum_rolls(&rolls)),
-            _ => println!("{:?}", &rolls),
+            _ => println!("{:?}", &rolls.results),
         }
     } else {
-        println!("{:?}", &rolls);
+        println!("{:?}", &rolls.results);
     }
 }
 
