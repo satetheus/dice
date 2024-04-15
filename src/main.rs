@@ -71,11 +71,11 @@ fn sum_rolls(rolls: &[i32]) -> i32 {
     rolls.iter().sum::<i32>()
 }
 
-fn explode_critical() {
+fn explode_critical(rolls: Rolls) -> Rolls {
     todo!();
 }
 
-fn explode_fumble() {
+fn explode_fumble(rolls: Rolls) -> Rolls {
     todo!();
 }
 
@@ -114,7 +114,9 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::{advantage, disadvantage, sum_rolls, Dice};
+    use crate::{
+        advantage, disadvantage, explode_critical, explode_fumble, sum_rolls, Dice, Rolls,
+    };
 
     #[test]
     fn test_dice_from_str() {
@@ -198,8 +200,26 @@ mod tests {
     }
 
     #[test]
-    fn test_explode_critical() {}
+    fn test_explode_critical() {
+        let mut rolls = Rolls {
+            rolls: vec![1, 2, 3, 4, 5, 6],
+            max: 6,
+            max_count: 1,
+            min: 1,
+            min_count: 1,
+        };
+        assert!(explode_critical(rolls).rolls.last().unwrap() > &6);
+    }
 
     #[test]
-    fn test_explode_fumble() {}
+    fn test_explode_fumble() {
+        let mut rolls = Rolls {
+            rolls: vec![1, 2, 3, 4, 5, 6],
+            max: 6,
+            max_count: 1,
+            min: 1,
+            min_count: 1,
+        };
+        assert!(explode_fumble(rolls).rolls.first().unwrap() < &1);
+    }
 }
