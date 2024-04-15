@@ -10,6 +10,14 @@ struct Dice {
     plus: i32,
 }
 
+struct Rolls {
+    rolls: Vec<i32>,
+    max: i32,
+    max_count: i32,
+    min: i32,
+    min_count: i32,
+}
+
 impl From<&str> for Dice {
     fn from(dice_spec: &str) -> Self {
         let dice_regex = Regex::new(r"(?<count>\d+)*d(?<sides>\d+)\+*(?<plus>-*\d+)*").unwrap();
@@ -61,6 +69,14 @@ fn disadvantage(rolls: &[i32]) -> i32 {
 
 fn sum_rolls(rolls: &[i32]) -> i32 {
     rolls.iter().sum::<i32>()
+}
+
+fn explode_critical() {
+    todo!();
+}
+
+fn explode_fumble() {
+    todo!();
 }
 
 fn main() {
@@ -180,4 +196,10 @@ mod tests {
         assert_eq!(38, sum_rolls(&[19, 19]));
         assert_eq!(32, sum_rolls(&[19, 13]));
     }
+
+    #[test]
+    fn test_explode_critical() {}
+
+    #[test]
+    fn test_explode_fumble() {}
 }
