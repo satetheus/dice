@@ -184,61 +184,174 @@ mod tests {
     #[test]
     fn test_dice_roll() {
         // check upper range
-        assert!(!Dice::from("100000d10").roll().contains(&0));
+        assert!(!Dice::from("100000d10").roll().results.contains(&0));
         // check lower range
-        assert!(!Dice::from("100000d10").roll().contains(&11));
+        assert!(!Dice::from("100000d10").roll().results.contains(&11));
         // check roll count
-        assert_eq!(Dice::from("100000d10").roll().len(), 100000);
+        assert_eq!(Dice::from("100000d10").roll().results.len(), 100000);
     }
 
     #[test]
     fn test_adv() {
-        assert_eq!(10, advantage(&[10, 3, 5]));
-        assert_eq!(99, advantage(&[99, 50, 32, 27]));
-        assert_eq!(5, advantage(&[5]));
-        assert_eq!(19, advantage(&[19, 19]));
-        assert_eq!(19, advantage(&[19, 13]));
+        assert_eq!(
+            10,
+            advantage(&Rolls {
+                results: vec![10, 3, 5],
+                max: 10,
+                min: 1
+            })
+        );
+        assert_eq!(
+            99,
+            advantage(&Rolls {
+                results: vec![99, 50, 32, 27],
+                max: 100,
+                min: 1
+            })
+        );
+        assert_eq!(
+            5,
+            advantage(&Rolls {
+                results: vec![5],
+                max: 6,
+                min: 1
+            })
+        );
+        assert_eq!(
+            19,
+            advantage(&Rolls {
+                results: vec![19, 19],
+                max: 20,
+                min: 1
+            })
+        );
+        assert_eq!(
+            19,
+            advantage(&Rolls {
+                results: vec![19, 13],
+                max: 20,
+                min: 1
+            })
+        );
     }
 
     #[test]
     fn test_dis() {
-        assert_eq!(3, disadvantage(&[10, 3, 5]));
-        assert_eq!(27, disadvantage(&[99, 50, 32, 27]));
-        assert_eq!(5, disadvantage(&[5]));
-        assert_eq!(19, disadvantage(&[19, 19]));
-        assert_eq!(13, disadvantage(&[19, 13]));
+        assert_eq!(
+            3,
+            disadvantage(&Rolls {
+                results: vec![10, 3, 5],
+                max: 10,
+                min: 1
+            })
+        );
+        assert_eq!(
+            27,
+            disadvantage(&Rolls {
+                results: vec![99, 50, 32, 27],
+                max: 100,
+                min: 1
+            })
+        );
+        assert_eq!(
+            5,
+            disadvantage(&Rolls {
+                results: vec![5],
+                max: 6,
+                min: 1
+            })
+        );
+        assert_eq!(
+            19,
+            disadvantage(&Rolls {
+                results: vec![19, 19],
+                max: 20,
+                min: 1
+            })
+        );
+        assert_eq!(
+            13,
+            disadvantage(&Rolls {
+                results: vec![19, 13],
+                max: 20,
+                min: 1
+            })
+        );
     }
 
     #[test]
     fn test_sum() {
-        assert_eq!(18, sum_rolls(&[10, 3, 5]));
-        assert_eq!(208, sum_rolls(&[99, 50, 32, 27]));
-        assert_eq!(5, sum_rolls(&[5]));
-        assert_eq!(38, sum_rolls(&[19, 19]));
-        assert_eq!(32, sum_rolls(&[19, 13]));
+        assert_eq!(
+            18,
+            sum_rolls(&Rolls {
+                results: vec![10, 3, 5],
+                max: 10,
+                min: 1
+            })
+        );
+        assert_eq!(
+            208,
+            sum_rolls(&Rolls {
+                results: vec![99, 50, 32, 27],
+                max: 100,
+                min: 1
+            })
+        );
+        assert_eq!(
+            5,
+            sum_rolls(&Rolls {
+                results: vec![5],
+                max: 6,
+                min: 1
+            })
+        );
+        assert_eq!(
+            38,
+            sum_rolls(&Rolls {
+                results: vec![19, 19],
+                max: 20,
+                min: 1
+            })
+        );
+        assert_eq!(
+            32,
+            sum_rolls(&Rolls {
+                results: vec![19, 13],
+                max: 20,
+                min: 1
+            })
+        );
     }
 
     #[test]
     fn test_explode_critical() {
         let mut rolls = Rolls {
-            rolls: vec![1, 2, 3, 4, 5, 6],
+            results: vec![1, 2, 3, 4, 5, 6],
             max: 6,
-            max_count: 1,
             min: 1,
-            min_count: 1,
         };
-        assert!(explode_critical(rolls).rolls.last().unwrap() > &6);
+        assert!(
+            explode_critical(rolls, Dice::from("1d6"))
+                .results
+                .last()
+                .unwrap()
+                > &6
+        );
     }
 
     #[test]
     fn test_explode_fumble() {
         let mut rolls = Rolls {
-            rolls: vec![1, 2, 3, 4, 5, 6],
+            results: vec![1, 2, 3, 4, 5, 6],
             max: 6,
-            max_count: 1,
             min: 1,
-            min_count: 1,
         };
-        assert!(explode_fumble(rolls).rolls.first().unwrap() < &1);
+        assert!(
+            explode_fumble(rolls, Dice::from("1d6"))
+                .results
+                .first()
+                .unwrap()
+                < &1
+        );
     }
 }
