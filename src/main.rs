@@ -74,12 +74,28 @@ fn sum_rolls(rolls: &Rolls) -> i32 {
     rolls.results.iter().sum::<i32>()
 }
 
-fn explode_critical(rolls: Rolls) -> Rolls {
-    todo!();
+fn explode_critical(mut rolls: Rolls, dice: Dice) -> Rolls {
+    let temp_dice = Dice { count: 1, ..dice };
+
+    rolls.results.iter_mut().for_each(|x| {
+        if *x == rolls.max {
+            *x += temp_dice.roll().results[0]
+        }
+    });
+
+    rolls
 }
 
-fn explode_fumble(rolls: Rolls) -> Rolls {
-    todo!();
+fn explode_fumble(mut rolls: Rolls, dice: Dice) -> Rolls {
+    let temp_dice = Dice { count: 1, ..dice };
+
+    rolls.results.iter_mut().for_each(|x| {
+        if *x == rolls.min {
+            *x -= temp_dice.roll().results[0]
+        }
+    });
+
+    rolls
 }
 
 fn main() {
