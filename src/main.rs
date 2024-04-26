@@ -75,11 +75,9 @@ fn sum_rolls(rolls: &Rolls) -> i32 {
 }
 
 fn explode_critical(mut rolls: Rolls, dice: Dice) -> Rolls {
-    let temp_dice = Dice { count: 1, ..dice };
-
     rolls.results.iter_mut().for_each(|x| {
         if *x == rolls.max {
-            *x += temp_dice.roll().results[0]
+            *x += dice.roll().results[0]
         }
     });
 
@@ -87,11 +85,9 @@ fn explode_critical(mut rolls: Rolls, dice: Dice) -> Rolls {
 }
 
 fn explode_fumble(mut rolls: Rolls, dice: Dice) -> Rolls {
-    let temp_dice = Dice { count: 1, ..dice };
-
     rolls.results.iter_mut().for_each(|x| {
         if *x == rolls.min {
-            *x -= temp_dice.roll().results[0]
+            *x -= dice.roll().results[0]
         }
     });
 
@@ -120,6 +116,16 @@ fn main() {
     let mut rolls = dice_spec.roll();
 
     if args.len() > 2 {
+        if args.contains(&"crit".to_owned()) {
+            let temp_dice = Dice { count: 1, ..dice_spec };
+            rolls = explode_critical(rolls, temp_dice);
+        }
+
+        if args.contains(&"fumb".to_owned()) {
+            let temp_dice = Dice { count: 1, ..dice_spec };
+            rolls = explode_fumble(rolls, temp_dice);
+        }
+
         match args[2].as_str() {
             "adv" => println!("{:?}", advantage(&rolls)),
             "dis" => println!("{:?}", disadvantage(&rolls)),
