@@ -1,67 +1,7 @@
 #! /usr/bin/env rustc
-use rand::distributions::{Distribution, Uniform};
+use dice::roll_dice::{advantage, disadvantage, explode_critical, explode_fumble, sum_rolls, Dice};
 use regex::Regex;
 use std::env;
-
-#[derive(PartialEq, Debug)]
-struct Dice {
-    count: i32,
-    sides: i32,
-    plus: i32,
-}
-
-impl From<&str> for Dice {
-    fn from(dice_spec: &str) -> Self {
-        let dice_regex = Regex::new(r"(?<count>\d+)*d(?<sides>\d+)\+*(?<plus>-*\d+)*").unwrap();
-        let dice: Vec<(i32, i32, i32)> = dice_regex
-            .captures_iter(dice_spec)
-            .map(|c| {
-                let count: i32 = match c.name("count") {
-                    Some(string) => string.as_str().parse::<i32>().expect(""),
-                    None => 1,
-                };
-                let sides: i32 = c.name("sides").unwrap().as_str().parse::<i32>().expect("");
-                let plus: i32 = match c.name("plus") {
-                    Some(string) => string.as_str().parse::<i32>().expect(""),
-                    None => 0,
-                };
-                (count, sides, plus)
-            })
-            .collect();
-
-        Dice {
-            count: dice[0].0,
-            sides: dice[0].1,
-            plus: dice[0].2,
-        }
-    }
-}
-
-impl Dice {
-    fn roll(&self) -> Vec<i32> {
-        let mut rng = rand::thread_rng();
-        let die_size = Uniform::from(1..=self.sides);
-        let mut rolls = vec![];
-
-        for _ in 1..=self.count {
-            rolls.push(die_size.sample(&mut rng) + self.plus);
-        }
-
-        rolls
-    }
-}
-
-fn advantage(rolls: &[i32]) -> i32 {
-    *rolls.iter().max().unwrap()
-}
-
-fn disadvantage(rolls: &[i32]) -> i32 {
-    *rolls.iter().min().unwrap()
-}
-
-fn sum_rolls(rolls: &[i32]) -> i32 {
-    rolls.iter().sum::<i32>()
-}
 
 fn main() {
     let mut args: Vec<String> = env::args().collect();
@@ -82,102 +22,39 @@ fn main() {
         }
     };
 
-    let rolls = dice_spec.roll();
+    let mut rolls = dice_spec.roll();
 
     if args.len() > 2 {
-        match args[2].as_str() {
-            "adv" => println!("{:?}", advantage(&rolls)),
-            "dis" => println!("{:?}", disadvantage(&rolls)),
-            "sum" => println!("{:?}", sum_rolls(&rolls)),
-            _ => println!("{:?}", &rolls),
+        if args.contains(&"crit".to_owned()) {
+            let temp_dice = Dice {
+                count: 1,
+                ..dice_spec
+            };
+            rolls = explode_critical(rolls, temp_dice);
         }
-    } else {
-        println!("{:?}", &rolls);
-    }
-}
 
-#[cfg(test)]
-mod tests {
-    use crate::{advantage, disadvantage, sum_rolls, Dice};
-
-    #[test]
-    fn test_dice_from_str() {
-        assert_eq!(
-            Dice {
+        if args.contains(&"fumb".to_owned()) {
+            let temp_dice = Dice {
                 count: 1,
-                sides: 10,
-                plus: 0
-            },
-            Dice::from("d10")
-        );
-        assert_eq!(
-            Dice {
-                count: 1,
-                sides: 10,
-                plus: 0
-            },
-            Dice::from("1d10")
-        );
-        assert_eq!(
-            Dice {
-                count: 1,
-                sides: 10,
-                plus: 0
-            },
-            Dice::from("1d10+0")
-        );
-        assert_eq!(
-            Dice {
-                count: 10,
-                sides: 6,
-                plus: 3
-            },
-            Dice::from("10d6+3")
-        );
-        assert_eq!(
-            Dice {
-                count: 10,
-                sides: 6,
-                plus: 3
-            },
-            Dice::from("10d6+3+5")
-        );
+                ..dice_spec
+            };
+            rolls = explode_fumble(rolls, temp_dice);
+        }
+
+        if args.contains(&"adv".to_owned()) {
+            println!("Advantage: {:?}", advantage(&rolls));
+        }
+
+        if args.contains(&"dis".to_owned()) {
+            println!("Disadvantage: {:?}", disadvantage(&rolls));
+        }
+
+        if args.contains(&"sum".to_owned()) {
+            println!("Sum: {:?}", sum_rolls(&rolls));
+        }
     }
 
-    #[test]
-    fn test_dice_roll() {
-        // check upper range
-        assert!(!Dice::from("100000d10").roll().contains(&0));
-        // check lower range
-        assert!(!Dice::from("100000d10").roll().contains(&11));
-        // check roll count
-        assert_eq!(Dice::from("100000d10").roll().len(), 100000);
-    }
-
-    #[test]
-    fn test_adv() {
-        assert_eq!(10, advantage(&[10, 3, 5]));
-        assert_eq!(99, advantage(&[99, 50, 32, 27]));
-        assert_eq!(5, advantage(&[5]));
-        assert_eq!(19, advantage(&[19, 19]));
-        assert_eq!(19, advantage(&[19, 13]));
-    }
-
-    #[test]
-    fn test_dis() {
-        assert_eq!(3, disadvantage(&[10, 3, 5]));
-        assert_eq!(27, disadvantage(&[99, 50, 32, 27]));
-        assert_eq!(5, disadvantage(&[5]));
-        assert_eq!(19, disadvantage(&[19, 19]));
-        assert_eq!(13, disadvantage(&[19, 13]));
-    }
-
-    #[test]
-    fn test_sum() {
-        assert_eq!(18, sum_rolls(&[10, 3, 5]));
-        assert_eq!(208, sum_rolls(&[99, 50, 32, 27]));
-        assert_eq!(5, sum_rolls(&[5]));
-        assert_eq!(38, sum_rolls(&[19, 19]));
-        assert_eq!(32, sum_rolls(&[19, 13]));
+    if !args.contains(&"hide".to_owned()) {
+        println!("{:?}", &rolls.results);
     }
 }

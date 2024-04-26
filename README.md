@@ -37,10 +37,14 @@ ex: `dice Hello there!` will output:
 
 ### Commands
 Commands must come after the dice notation with a space between. Otherwise, the program will treat it as unrecognized formatting like in the above section.
-Only 1 command can be used at a time.
+You can use as many of the commands as you want, & the order of the commands does not matter. Commands will only be processed once, & unrecognized commands will be ignored without a warning.
+Commands are processed in the same order as they appear in the table below & the outputs will show up in that order. "crit" & "fumb" only affect the rolled numbers, & do not have their own output (example output is only used for them in the table below for clarity).
 
-| name | description                                                                         | example           | example output |
-| ---- | -------------                                                                       | -------           | -------------- |
-| adv  | Selects the highest total roll out of all rolled dice, including the plus or minus. | `dice 2d20 adv`   | `19`           |
-| dis  | Selects the lowest total roll out of all rolled dice, including the plus or minus.  | `dice 2d20+1 dis` | `8`            |
-| sum  | Sums all rolled dice including the plus or minus.                                   | `dice 10d4 sum`   | `23`           |
+| name | description                                                                                     | example            | example output    |
+| ---- | -------------                                                                                   | -------            | --------------    |
+| crit | Rerolls any rolls that hit the max, & adds it to the original roll. A.k.a Explode critical      | `dice 2d20 crit`   | `[10, 25]`        |
+| fumb | Rerolls any rolls that hit the min, & subtracts it from the original roll. A.k.a Explode fumble | `dice 2d20 crit`   | `[13, -4]`        |
+| adv  | Selects the highest total roll out of all rolled dice, including the plus or minus.             | `dice 2d20 adv`    | `Advantage: 19`   |
+| dis  | Selects the lowest total roll out of all rolled dice, including the plus or minus.              | `dice 2d20+1 dis`  | `Disadvantage: 8` |
+| sum  | Sums all rolled dice including the plus or minus.                                               | `dice 10d4 sum`    | `Sum: 23`         |
+| hide | Hides the original numbers rolled, in case you only want the output of another command.         | `dice 100d20 hide` | ``                |
