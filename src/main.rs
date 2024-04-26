@@ -117,12 +117,18 @@ fn main() {
 
     if args.len() > 2 {
         if args.contains(&"crit".to_owned()) {
-            let temp_dice = Dice { count: 1, ..dice_spec };
+            let temp_dice = Dice {
+                count: 1,
+                ..dice_spec
+            };
             rolls = explode_critical(rolls, temp_dice);
         }
 
         if args.contains(&"fumb".to_owned()) {
-            let temp_dice = Dice { count: 1, ..dice_spec };
+            let temp_dice = Dice {
+                count: 1,
+                ..dice_spec
+            };
             rolls = explode_fumble(rolls, temp_dice);
         }
 
