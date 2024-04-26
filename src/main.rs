@@ -132,13 +132,20 @@ fn main() {
             rolls = explode_fumble(rolls, temp_dice);
         }
 
-        match args[2].as_str() {
-            "adv" => println!("{:?}", advantage(&rolls)),
-            "dis" => println!("{:?}", disadvantage(&rolls)),
-            "sum" => println!("{:?}", sum_rolls(&rolls)),
-            _ => println!("{:?}", &rolls.results),
+        if args.contains(&"adv".to_owned()) {
+            println!("Advantage: {:?}", advantage(&rolls));
         }
-    } else {
+
+        if args.contains(&"dis".to_owned()) {
+            println!("Disadvantage: {:?}", disadvantage(&rolls));
+        }
+
+        if args.contains(&"sum".to_owned()) {
+            println!("Sum: {:?}", sum_rolls(&rolls));
+        }
+    }
+
+    if !args.contains(&"hide".to_owned()) {
         println!("{:?}", &rolls.results);
     }
 }
