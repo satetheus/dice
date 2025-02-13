@@ -96,14 +96,26 @@ pub mod roll_dice {
 
     pub fn sort_rolls(mut rolls: Rolls, desc: bool) -> Rolls {
         rolls.results.sort();
-        if desc == true {
+        if desc {
             rolls.results.reverse();
         };
 
         rolls
     }
 
-    pub fn make_rolls_unique(mut rolls: Rolls, action: String) -> Rolls {
+    pub fn make_rolls_unique(mut rolls: Rolls, action: &str) -> Rolls {
+        match action {
+            "drop" => {
+                rolls.results.sort();
+                rolls.results.dedup();
+            }
+            _ => {
+                println!("invalid syntax for make_rolls_unique, drop duplicates was assumed");
+                rolls.results.sort();
+                rolls.results.dedup()
+            }
+        };
+
         rolls
     }
 }
@@ -111,7 +123,8 @@ pub mod roll_dice {
 #[cfg(test)]
 mod tests {
     use crate::roll_dice::{
-        advantage, disadvantage, explode_critical, explode_fumble, sum_rolls, Dice, Rolls, sort_rolls, make_rolls_unique,
+        advantage, disadvantage, explode_critical, explode_fumble, make_rolls_unique, sort_rolls,
+        sum_rolls, Dice, Rolls,
     };
 
     #[test]
@@ -343,7 +356,8 @@ mod tests {
                     min: 1,
                 },
                 false
-            ).results
+            )
+            .results
         );
         assert_eq!(
             vec![6, 5, 5, 4, 3, 2, 1],
@@ -354,7 +368,8 @@ mod tests {
                     min: 1,
                 },
                 true
-            ).results
+            )
+            .results
         );
     }
 
@@ -366,8 +381,8 @@ mod tests {
             min: 1,
         };
         assert_eq!(
-            vec![3, 5, 4, 2, 1, 6],
-            make_rolls_unique(rolls, "drop".to_owned()).results
+            vec![1, 2, 3, 4, 5, 6],
+            make_rolls_unique(rolls, "drop").results
         );
     }
 }
