@@ -93,12 +93,20 @@ pub mod roll_dice {
 
         rolls
     }
+
+    pub fn sort_rolls(mut rolls: Rolls, desc: bool) -> Rolls {
+        rolls
+    }
+
+    pub fn make_rolls_unique(mut rolls: Rolls, action: String) -> Rolls {
+        rolls
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::roll_dice::{
-        advantage, disadvantage, explode_critical, explode_fumble, sum_rolls, Dice, Rolls,
+        advantage, disadvantage, explode_critical, explode_fumble, sum_rolls, Dice, Rolls, sort_rolls, make_rolls_unique,
     };
 
     #[test]
@@ -316,6 +324,45 @@ mod tests {
                 .first()
                 .unwrap()
                 < &1
+        );
+    }
+
+    #[test]
+    fn test_sort_rolls() {
+        assert_eq!(
+            vec![1, 2, 3, 4, 5, 5, 6],
+            sort_rolls(
+                Rolls {
+                    results: vec![3, 5, 4, 5, 2, 1, 6],
+                    max: 6,
+                    min: 1,
+                },
+                false
+            ).results
+        );
+        assert_eq!(
+            vec![6, 5, 5, 4, 3, 2, 1],
+            sort_rolls(
+                Rolls {
+                    results: vec![3, 5, 4, 5, 2, 1, 6],
+                    max: 6,
+                    min: 1,
+                },
+                true
+            ).results
+        );
+    }
+
+    #[test]
+    fn test_make_rolls_unique() {
+        let rolls = Rolls {
+            results: vec![3, 5, 4, 5, 2, 1, 6],
+            max: 6,
+            min: 1,
+        };
+        assert_eq!(
+            vec![3, 5, 4, 2, 1, 6],
+            make_rolls_unique(rolls, "drop".to_owned()).results
         );
     }
 }
