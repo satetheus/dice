@@ -95,6 +95,11 @@ pub mod roll_dice {
     }
 
     pub fn sort_rolls(mut rolls: Rolls, desc: bool) -> Rolls {
+        rolls.results.sort();
+        if desc == true {
+            rolls.results.reverse();
+        };
+
         rolls
     }
 
