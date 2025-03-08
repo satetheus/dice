@@ -44,16 +44,16 @@ fn main() {
             rolls = explode_fumble(rolls, temp_dice);
         }
 
+        if args.contains(&"uniq".to_owned()) {
+            rolls = make_rolls_unique(rolls, "drop");
+        }
+
         if args.contains(&"asc".to_owned()) {
             rolls = sort_rolls(rolls, false);
         }
 
         if args.contains(&"desc".to_owned()) {
             rolls = sort_rolls(rolls, true);
-        }
-
-        if args.contains(&"uniq".to_owned()) {
-            rolls = make_rolls_unique(rolls, "drop");
         }
 
         if args.contains(&"adv".to_owned()) {
