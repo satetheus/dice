@@ -1,7 +1,6 @@
 #! /usr/bin/env rustc
 use dice::roll_dice::{advantage, disadvantage, explode_critical, explode_fumble, sum_rolls, Dice};
 mod parser;
-use parser::parse_dice::basic_dice;
 use regex::Regex;
 use std::env;
 

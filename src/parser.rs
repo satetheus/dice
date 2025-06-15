@@ -1,105 +1,95 @@
 #! /usr/bin/env rustc
+#[allow(dead_code, unused_variables)]
 pub mod parse_dice {
-    use nom::character::complete::{char, digit0, digit1, one_of};
-    use nom::multi::many0;
-    use nom::sequence::{pair, separated_pair};
+    use nom::character::complete::{char, digit1};
+    use nom::combinator::{map_res, opt};
+    use nom::sequence::separated_pair;
     use nom::IResult;
     use nom::Parser;
 
-    pub fn dice_count(input: &str) -> IResult<&str, &str> {
-        let (remaining, matched) = digit0(input)?;
-        let matched = if matched.is_empty() { "1" } else { matched };
-
-        Ok((remaining, matched))
+    #[derive(PartialEq, Debug)]
+    pub struct Dice {
+        pub count: i32,
+        pub sides: Sides,
     }
 
-    pub fn basic_dice(
-        input: &str,
-    ) -> IResult<&str, (Vec<(&str, char)>, (&str, &str), Vec<(char, &str)>)> {
-        // r"(?<count>\d+)*d(?<sides>\d+)\+*(?<plus>-*\d+)*"
-        let mut dice = (
-            many0(pair(number_value, operator)),
-            separated_pair(dice_count, char('d'), number_value),
-            many0(pair(operator, number_value)),
-        );
-
-        dice.parse(input)
+    #[derive(PartialEq, Debug)]
+    pub enum Sides {
+        Number(i32),
+        Symbols(Vec<String>),
     }
 
-    pub fn number_value(input: &str) -> IResult<&str, &str> {
-        // having a wrapper around digit1 is for later expansion of dice values.
-        digit1(input)
+    enum Rolls {
+        Numbers(Vec<i32>),
+        Symbols(Vec<String>),
     }
 
-    pub fn operator(input: &str) -> IResult<&str, char> {
-        one_of("+-*x/")(input)
+    pub fn parse_digit(input: &str) -> IResult<&str, i32> {
+        let (remaining, matched) = opt(map_res(digit1, str::parse::<i32>)).parse(input)?;
+
+        Ok((remaining, matched.unwrap_or(1)))
+    }
+
+    pub fn parse_dice(input: &str) -> IResult<&str, Dice> {
+        let mut dice_parser = separated_pair(parse_digit, char('d'), parse_digit);
+        // todo! eventually needs to handle Sides::Symbols()
+        let Ok((remaining, (count, sides))) = dice_parser.parse(input) else {
+            todo!() // needs proper error handling
+        };
+
+        Ok((
+            remaining,
+            Dice {
+                count,
+                sides: Sides::Number(sides),
+            },
+        ))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse_dice::{basic_dice, dice_count, number_value, operator};
+    use super::parse_dice::{parse_dice, parse_digit, Dice, Sides};
 
     #[test]
-    fn test_basic_dice() {
-        assert_eq!(basic_dice("1d20"), Ok(("", (vec![], ("1", "20"), vec![]))));
-        assert_eq!(basic_dice("d20"), Ok(("", (vec![], ("1", "20"), vec![]))));
+    fn test_parse_digit() {
+        assert_eq!(parse_digit("1d10"), Ok(("d10", 1,)));
+        assert_eq!(parse_digit("100d10"), Ok(("d10", 100,)));
+        assert_eq!(parse_digit("asdf100"), Ok(("asdf100", 1,)));
+        assert_eq!(parse_digit("1000"), Ok(("", 1000,)));
+    }
+
+    #[test]
+    fn test_parse_dice() {
         assert_eq!(
-            basic_dice("1d20+5"),
-            Ok(("", (vec![], ("1", "20"), vec![('+', "5")])))
-        );
-        assert_eq!(
-            basic_dice("2d20-4"),
-            Ok(("", (vec![], ("2", "20"), vec![('-', "4")])))
-        );
-        assert_eq!(
-            basic_dice("1d20x2"),
-            Ok(("", (vec![], ("1", "20"), vec![('x', "2")])))
-        );
-        assert_eq!(
-            basic_dice("1d10/2"),
-            Ok(("", (vec![], ("1", "10"), vec![('/', "2")])))
-        );
-        assert_eq!(
-            basic_dice("10*1d20x2"),
-            Ok(("", (vec![("10", '*')], ("1", "20"), vec![('x', "2")])))
-        );
-        assert_eq!(
-            basic_dice("5+10*1d20x2-1-3/2"),
+            parse_dice("1d10+27"),
             Ok((
-                "",
-                (
-                    vec![("5", '+'), ("10", '*')],
-                    ("1", "20"),
-                    vec![('x', "2"), ('-', "1"), ('-', "3"), ('/', "2")]
-                )
+                "+27",
+                Dice {
+                    count: 1,
+                    sides: Sides::Number(10)
+                }
             ))
         );
-    }
-
-    #[test]
-    fn test_dice_count() {
-        assert_eq!(dice_count("1d20"), Ok(("d20", "1")));
-        assert_eq!(dice_count("d20"), Ok(("d20", "1")));
-        assert_eq!(dice_count("30000d20+1"), Ok(("d20+1", "30000")));
-        assert_eq!(dice_count("123451d"), Ok(("d", "123451")));
-    }
-
-    #[test]
-    fn test_number_value() {
-        assert_eq!(number_value("20"), Ok(("", "20")));
-        assert!(number_value("").is_err());
-        assert!(number_value("asdf").is_err());
-        assert!(number_value("d20").is_err());
-    }
-
-    #[test]
-    fn test_operator() {
-        assert!(operator("1+").is_err());
-        assert_eq!(operator("+2"), Ok(("2", '+')));
-        assert_eq!(operator("x3"), Ok(("3", 'x')));
-        assert_eq!(operator("*3"), Ok(("3", '*')));
-        assert_eq!(operator("-d20"), Ok(("d20", '-')));
-        assert_eq!(operator("/5"), Ok(("5", '/')));
+        assert_eq!(
+            parse_dice("57d300-1"),
+            Ok((
+                "-1",
+                Dice {
+                    count: 57,
+                    sides: Sides::Number(300)
+                }
+            ))
+        );
+        assert_eq!(
+            parse_dice("d10*2"),
+            Ok((
+                "*2",
+                Dice {
+                    count: 1,
+                    sides: Sides::Number(10)
+                }
+            ))
+        );
     }
 }
