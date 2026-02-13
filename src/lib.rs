@@ -9,46 +9,46 @@ pub enum Token {
     Operator(char),
 }
 
-pub fn tokenize(input: &str) -> Vec<Token> {
-    let mut tokens: Vec<Token> = vec![];
-    let mut chars = input.chars().peekable();
+#[derive(PartialEq, Debug)]
+pub struct Tokens(Vec<Token>);
 
-    while let Some(&current_char) = chars.peek() {
-        dbg!(&chars);
-        match current_char {
-            'd' => {
-                tokens.push(Token::Dice);
-                chars.next();
-            }
-            '0'..='9' => {
-                tokens.push(Token::Number(tokenize_number(&mut chars)));
-            }
-            '*' | '/' | '+' | '-' => {
-                tokens.push(Token::Operator(current_char));
-                chars.next();
-            }
-            _ => {
-                panic!("Couldn't parse dice notation")
+impl From<&str> for Tokens {
+    fn from(input: &str) -> Self {
+        let mut tokens: Vec<Token> = vec![];
+        let mut chars = input.chars().peekable();
+
+        while let Some(&current_char) = chars.peek() {
+            match current_char {
+                'd' => {
+                    tokens.push(Token::Dice);
+                    chars.next();
+                }
+                '0'..='9' => {
+                    tokens.push(tokenize_number(&mut chars));
+                }
+                '*' | '/' | '+' | '-' => {
+                    tokens.push(Token::Operator(current_char));
+                    chars.next();
+                }
+                _ => {
+                    // !TODO this should really be handled properly
+                    panic!("Couldn't parse dice notation")
+                }
             }
         }
-    }
 
-    tokens
+        Tokens(tokens)
+    }
 }
 
-fn tokenize_number(chars: &mut Peekable<Chars>) -> u64 {
-    let mut result = String::new();
+fn tokenize_number(chars: &mut Peekable<Chars>) -> Token {
+    let mut number: u64 = 0;
 
-    while let Some(&current_char) = chars.peek() {
-        match current_char {
-            '0'..='9' => {
-                result.push(current_char);
-                chars.next();
-            }
-            _ => break,
-        }
+    while let Some(digit) = chars.next_if(|c| c.is_ascii_digit()) {
+        number = number * 10 + (digit.to_digit(10).unwrap_or(0) as u64);
     }
-    result.parse::<u64>().expect("issue parsing number")
+
+    Token::Number(number)
 }
 
 #[cfg(test)]
@@ -56,24 +56,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_tokenize() {
+    fn test_tokenization() {
         assert_eq!(
-            tokenize("1d10"),
-            vec![Token::Number(1), Token::Dice, Token::Number(10)]
+            Tokens::from("1d10"),
+            Tokens(vec![Token::Number(1), Token::Dice, Token::Number(10)])
         );
         assert_eq!(
-            tokenize("1d20"),
-            vec![Token::Number(1), Token::Dice, Token::Number(20)]
+            Tokens::from("1d20"),
+            Tokens(vec![Token::Number(1), Token::Dice, Token::Number(20)])
         );
         assert_eq!(
-            tokenize("1d20+1"),
-            vec![
+            Tokens::from("1d20+1"),
+            Tokens(vec![
                 Token::Number(1),
                 Token::Dice,
                 Token::Number(20),
                 Token::Operator('+'),
                 Token::Number(1)
-            ]
+            ])
         );
     }
 }
