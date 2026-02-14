@@ -4,8 +4,7 @@ use std::str::Chars;
 
 #[derive(PartialEq, Debug)]
 pub enum Token {
-    Dice,
-    Number(u64),
+    Value(u64),
     Operator(char),
 }
 
@@ -19,14 +18,10 @@ impl From<&str> for Tokens {
 
         while let Some(&current_char) = chars.peek() {
             match current_char {
-                'd' => {
-                    tokens.push(Token::Dice);
-                    chars.next();
-                }
                 '0'..='9' => {
                     tokens.push(tokenize_number(&mut chars));
                 }
-                '*' | '/' | '+' | '-' => {
+                'd' | '*' | '/' | '+' | '-' => {
                     tokens.push(Token::Operator(current_char));
                     chars.next();
                 }
@@ -48,7 +43,7 @@ fn tokenize_number(chars: &mut Peekable<Chars>) -> Token {
         number = number * 10 + (digit.to_digit(10).unwrap_or(0) as u64);
     }
 
-    Token::Number(number)
+    Token::Value(number)
 }
 
 #[cfg(test)]
@@ -59,20 +54,28 @@ mod tests {
     fn test_tokenization() {
         assert_eq!(
             Tokens::from("1d10"),
-            Tokens(vec![Token::Number(1), Token::Dice, Token::Number(10)])
+            Tokens(vec![
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(10)
+            ])
         );
         assert_eq!(
             Tokens::from("1d20"),
-            Tokens(vec![Token::Number(1), Token::Dice, Token::Number(20)])
+            Tokens(vec![
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(20)
+            ])
         );
         assert_eq!(
             Tokens::from("1d20+1"),
             Tokens(vec![
-                Token::Number(1),
-                Token::Dice,
-                Token::Number(20),
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(20),
                 Token::Operator('+'),
-                Token::Number(1)
+                Token::Value(1)
             ])
         );
     }
