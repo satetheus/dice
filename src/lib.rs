@@ -84,7 +84,21 @@ fn shunting_yard(mut input: VecDeque<Token>) -> VecDeque<Token> {
                 }
                 op_stack.push(token);
             }
-            Token::OpenParenthesis | Token::CloseParenthesis => todo!(),
+            Token::OpenParenthesis => op_stack.push(token),
+            Token::CloseParenthesis => {
+                while !op_stack.is_empty() {
+                    let popped_op = op_stack.pop();
+                    match popped_op {
+                        Some(op) => {
+                            if op == Token::OpenParenthesis {
+                                break;
+                            }
+                            out_stack.push_back(op);
+                        }
+                        None => break,
+                    }
+                }
+            }
         }
     }
 
