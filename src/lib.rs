@@ -179,6 +179,9 @@ mod tests {
                 Token::Operator('+'),
             ])
         );
+    }
+    #[test]
+    fn test_shunting_yard_parenthesis() {
         assert_eq!(
             shunting_yard(VecDeque::from([
                 Token::Value(1),
@@ -191,6 +194,36 @@ mod tests {
                 Token::Value(1),
                 Token::Operator('d'),
                 Token::Value(4),
+                Token::CloseParenthesis,
+            ])),
+            VecDeque::from([
+                Token::Value(1),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Value(5),
+                Token::Value(1),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Operator('-'),
+                Token::Operator('*'),
+            ])
+        );
+        assert_eq!(
+            shunting_yard(VecDeque::from([
+                Token::OpenParenthesis,
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(4),
+                Token::CloseParenthesis,
+                Token::Operator('*'),
+                Token::OpenParenthesis,
+                Token::OpenParenthesis,
+                Token::Value(5),
+                Token::Operator('-'),
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(4),
+                Token::CloseParenthesis,
                 Token::CloseParenthesis,
             ])),
             VecDeque::from([
