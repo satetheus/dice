@@ -7,6 +7,8 @@ use std::str::Chars;
 pub enum Token {
     Value(u64),
     Operator(char),
+    OpenParenthesis,
+    CloseParenthesis,
 }
 
 impl Token {
@@ -20,6 +22,7 @@ impl Token {
                 'd' => 4,
                 _ => todo!(),
             },
+            Token::OpenParenthesis | Token::CloseParenthesis => -1,
         }
     }
 }
@@ -81,6 +84,7 @@ fn shunting_yard(mut input: VecDeque<Token>) -> VecDeque<Token> {
                 }
                 op_stack.push(token);
             }
+            Token::OpenParenthesis | Token::CloseParenthesis => todo!(),
         }
     }
 
@@ -159,6 +163,32 @@ mod tests {
                 Token::Value(2),
                 Token::Operator('-'),
                 Token::Operator('+'),
+            ])
+        );
+        assert_eq!(
+            shunting_yard(VecDeque::from([
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(4),
+                Token::Operator('*'),
+                Token::OpenParenthesis,
+                Token::Value(5),
+                Token::Operator('-'),
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(4),
+                Token::CloseParenthesis,
+            ])),
+            VecDeque::from([
+                Token::Value(1),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Value(5),
+                Token::Value(1),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Operator('-'),
+                Token::Operator('*'),
             ])
         );
     }
