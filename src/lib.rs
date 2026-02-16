@@ -4,6 +4,32 @@ use std::iter::Peekable;
 use std::str::Chars;
 
 #[derive(PartialEq, Debug)]
+pub struct Dice(VecDeque<Token>);
+
+impl From<Tokens> for Dice {
+    fn from(input: Tokens) -> Self {
+        if !validate(&input) {
+            println!("Because of the above error, the supplied dice notation");
+            println!("could not be parsed. We took the liberty of supplying a");
+            println!("1d20, in case that is what you wanted.");
+            return Dice(Tokens::from("1d20").0);
+        }
+
+        Dice(input.0)
+    }
+}
+
+fn validate(input: &Tokens) -> bool {
+    // todo! more than this check will eventually be needed, but it's is a start
+    if !input.0.contains(&Token::Operator('d')) {
+        println!("Supplied dice notation does not contain a dice symbol: 'd'");
+        return false;
+    }
+
+    true
+}
+
+#[derive(PartialEq, Debug)]
 pub enum Token {
     Value(u64),
     Operator(char),
@@ -279,6 +305,33 @@ mod tests {
                 Token::Operator('-'),
                 Token::Operator('*'),
             ])
+        );
+    }
+
+    #[test]
+    fn test_dice_from() {
+        assert_eq!(
+            Dice::from(Tokens::from("-1+2d4*(5-1)")),
+            Dice(VecDeque::from([
+                Token::Value(1),
+                Token::UnaryOp('-'),
+                Token::Value(2),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Value(5),
+                Token::Value(1),
+                Token::Operator('-'),
+                Token::Operator('*'),
+                Token::Operator('+'),
+            ]))
+        );
+        assert_eq!(
+            Dice::from(Tokens::from("1+1")),
+            Dice(VecDeque::from([
+                Token::Value(1),
+                Token::Value(20),
+                Token::Operator('d'),
+            ]))
         );
     }
 }
