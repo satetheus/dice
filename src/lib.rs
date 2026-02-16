@@ -72,8 +72,8 @@ impl From<&str> for Tokens {
                     chars.next();
                 }
                 _ => {
-                    // !TODO this should really be handled properly
-                    panic!("Couldn't parse dice notation")
+                    println!("skipping character '{}'", current_char);
+                    chars.next();
                 }
             }
         }
@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn test_tokenization() {
         assert_eq!(
-            Tokens::from("1d10"),
+            Tokens::from("1 d10"),
             Tokens(VecDeque::from([
                 Token::Value(1),
                 Token::Value(10),
