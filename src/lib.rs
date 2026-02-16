@@ -1,321 +1,337 @@
 #! /usr/bin/env rustc
-pub mod roll_dice {
-    use rand::distributions::{Distribution, Uniform};
-    use regex::Regex;
+use std::collections::VecDeque;
+use std::iter::Peekable;
+use std::str::Chars;
 
-    #[derive(PartialEq, Debug)]
-    pub struct Dice {
-        pub count: i32,
-        pub sides: i32,
-        pub plus: i32,
+#[derive(PartialEq, Debug)]
+pub struct Dice(VecDeque<Token>);
+
+impl From<Tokens> for Dice {
+    fn from(input: Tokens) -> Self {
+        if !validate(&input) {
+            println!("Because of the above error, the supplied dice notation");
+            println!("could not be parsed. We took the liberty of supplying a");
+            println!("1d20, in case that is what you wanted.");
+            return Dice(Tokens::from("1d20").0);
+        }
+
+        Dice(input.0)
+    }
+}
+
+fn validate(input: &Tokens) -> bool {
+    // todo! more than this check will eventually be needed, but it's is a start
+    if !input.0.contains(&Token::Operator('d')) {
+        println!("Supplied dice notation does not contain a dice symbol: 'd'");
+        return false;
     }
 
-    #[derive(Debug)]
-    pub struct Rolls {
-        pub results: Vec<i32>,
-        pub max: i32,
-        pub min: i32,
+    true
+}
+
+#[derive(PartialEq, Debug)]
+pub enum Token {
+    Value(u64),
+    Operator(char),
+    UnaryOp(char),
+    OpenParenthesis,
+    CloseParenthesis,
+}
+
+impl Token {
+    fn get_order(&self) -> i16 {
+        match self {
+            Token::Value(_) => -1,
+            Token::Operator(op) => match op {
+                '+' | '-' => 1,
+                '*' | '/' => 2,
+                '^' => 3,
+                'd' => 4,
+                _ => todo!(),
+            },
+            Token::OpenParenthesis | Token::CloseParenthesis => -1,
+            // UnaryOp order is subject to change, but must be higher than d &
+            // the other standard math operators
+            Token::UnaryOp(_) => 10,
+        }
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub struct Tokens(VecDeque<Token>);
+
+impl From<&str> for Tokens {
+    fn from(input: &str) -> Self {
+        let mut tokens: VecDeque<Token> = VecDeque::new();
+        let mut chars = input.chars().peekable();
+
+        while let Some(&current_char) = chars.peek() {
+            match current_char {
+                '0'..='9' => {
+                    tokens.push_back(tokenize_number(&mut chars));
+                }
+                'd' | '*' | '/' => {
+                    tokens.push_back(Token::Operator(current_char));
+                    chars.next();
+                }
+                '+' | '-' => {
+                    if let Some(op) = tokens.back() {
+                        match op {
+                            Token::Operator(_) | Token::OpenParenthesis => {
+                                tokens.push_back(Token::UnaryOp(current_char));
+                            }
+                            _ => {
+                                tokens.push_back(Token::Operator(current_char));
+                            }
+                        }
+                    } else {
+                        tokens.push_back(Token::UnaryOp(current_char));
+                    }
+                    chars.next();
+                }
+                '(' => {
+                    tokens.push_back(Token::OpenParenthesis);
+                    chars.next();
+                }
+                ')' => {
+                    tokens.push_back(Token::CloseParenthesis);
+                    chars.next();
+                }
+                _ => {
+                    println!("skipping character '{}'", current_char);
+                    chars.next();
+                }
+            }
+        }
+
+        Tokens(shunting_yard(tokens))
+    }
+}
+
+fn tokenize_number(chars: &mut Peekable<Chars>) -> Token {
+    let mut number: u64 = 0;
+
+    while let Some(digit) = chars.next_if(|c| c.is_ascii_digit()) {
+        number = number * 10 + (digit.to_digit(10).unwrap_or(0) as u64);
     }
 
-    impl From<&str> for Dice {
-        fn from(dice_spec: &str) -> Self {
-            let dice_regex = Regex::new(r"(?<count>\d+)*d(?<sides>\d+)\+*(?<plus>-*\d+)*").unwrap();
-            let dice: Vec<(i32, i32, i32)> = dice_regex
-                .captures_iter(dice_spec)
-                .map(|c| {
-                    let count: i32 = match c.name("count") {
-                        Some(string) => string.as_str().parse::<i32>().expect(""),
-                        None => 1,
-                    };
-                    let sides: i32 = c.name("sides").unwrap().as_str().parse::<i32>().expect("");
-                    let plus: i32 = match c.name("plus") {
-                        Some(string) => string.as_str().parse::<i32>().expect(""),
-                        None => 0,
-                    };
-                    (count, sides, plus)
-                })
-                .collect();
+    Token::Value(number)
+}
 
-            Dice {
-                count: dice[0].0,
-                sides: dice[0].1,
-                plus: dice[0].2,
+fn shunting_yard(mut input: VecDeque<Token>) -> VecDeque<Token> {
+    let mut op_stack: Vec<Token> = vec![];
+    let mut out_stack: VecDeque<Token> = VecDeque::new();
+
+    while let Some(token) = input.pop_front() {
+        match token {
+            Token::Value(_) => out_stack.push_back(token),
+            Token::Operator(_) | Token::UnaryOp(_) => {
+                while !op_stack.is_empty() {
+                    let popped_op = op_stack.pop_if(|x| x.get_order() > token.get_order());
+                    match popped_op {
+                        Some(op) => {
+                            out_stack.push_back(op);
+                        }
+                        None => break,
+                    }
+                }
+                op_stack.push(token);
+            }
+            Token::OpenParenthesis => op_stack.push(token),
+            Token::CloseParenthesis => {
+                while !op_stack.is_empty() {
+                    let popped_op = op_stack.pop();
+                    match popped_op {
+                        Some(op) => {
+                            if op == Token::OpenParenthesis {
+                                break;
+                            }
+                            out_stack.push_back(op);
+                        }
+                        None => break,
+                    }
+                }
             }
         }
     }
 
-    impl Dice {
-        pub fn roll(&self) -> Rolls {
-            let mut rng = rand::thread_rng();
-            let die_size = Uniform::from(1..=self.sides);
-            let mut rolls = vec![];
-
-            for _ in 1..=self.count {
-                rolls.push(die_size.sample(&mut rng) + self.plus);
-            }
-
-            Rolls {
-                results: rolls,
-                max: self.sides + self.plus,
-                min: 1 + self.plus,
-            }
+    if !op_stack.is_empty() {
+        for _ in 0..op_stack.len() {
+            out_stack.push_back(op_stack.pop().expect("this should always work"));
         }
     }
 
-    pub fn advantage(rolls: &Rolls) -> i32 {
-        *rolls.results.iter().max().unwrap()
-    }
-
-    pub fn disadvantage(rolls: &Rolls) -> i32 {
-        *rolls.results.iter().min().unwrap()
-    }
-
-    pub fn sum_rolls(rolls: &Rolls) -> i32 {
-        rolls.results.iter().sum::<i32>()
-    }
-
-    pub fn explode_critical(mut rolls: Rolls, dice: Dice) -> Rolls {
-        rolls.results.iter_mut().for_each(|x| {
-            if *x == rolls.max {
-                *x += dice.roll().results[0]
-            }
-        });
-
-        rolls
-    }
-
-    pub fn explode_fumble(mut rolls: Rolls, dice: Dice) -> Rolls {
-        rolls.results.iter_mut().for_each(|x| {
-            if *x == rolls.min {
-                *x -= dice.roll().results[0]
-            }
-        });
-
-        rolls
-    }
+    out_stack
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::roll_dice::{
-        advantage, disadvantage, explode_critical, explode_fumble, sum_rolls, Dice, Rolls,
-    };
+    use super::*;
 
     #[test]
-    fn test_dice_from_str() {
+    fn test_tokenization() {
         assert_eq!(
-            Dice {
-                count: 1,
-                sides: 10,
-                plus: 0
-            },
-            Dice::from("d10")
+            Tokens::from("1 d10"),
+            Tokens(VecDeque::from([
+                Token::Value(1),
+                Token::Value(10),
+                Token::Operator('d'),
+            ]))
         );
         assert_eq!(
-            Dice {
-                count: 1,
-                sides: 10,
-                plus: 0
-            },
-            Dice::from("1d10")
+            Tokens::from("1d20"),
+            Tokens(VecDeque::from([
+                Token::Value(1),
+                Token::Value(20),
+                Token::Operator('d'),
+            ]))
         );
         assert_eq!(
-            Dice {
-                count: 1,
-                sides: 10,
-                plus: 0
-            },
-            Dice::from("1d10+0")
+            Tokens::from("1d20+1"),
+            Tokens(VecDeque::from([
+                Token::Value(1),
+                Token::Value(20),
+                Token::Operator('d'),
+                Token::Value(1),
+                Token::Operator('+'),
+            ]))
         );
         assert_eq!(
-            Dice {
-                count: 10,
-                sides: 6,
-                plus: 3
-            },
-            Dice::from("10d6+3")
-        );
-        assert_eq!(
-            Dice {
-                count: 10,
-                sides: 6,
-                plus: 3
-            },
-            Dice::from("10d6+3+5")
+            Tokens::from("-1+2d4*(5-1)"),
+            Tokens(VecDeque::from([
+                Token::Value(1),
+                Token::UnaryOp('-'),
+                Token::Value(2),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Value(5),
+                Token::Value(1),
+                Token::Operator('-'),
+                Token::Operator('*'),
+                Token::Operator('+'),
+            ]))
         );
     }
 
     #[test]
-    fn test_dice_roll() {
-        // check upper range
-        assert!(!Dice::from("100000d10").roll().results.contains(&0));
-        // check lower range
-        assert!(!Dice::from("100000d10").roll().results.contains(&11));
-        // check roll count
-        assert_eq!(Dice::from("100000d10").roll().results.len(), 100000);
-    }
-
-    #[test]
-    fn test_adv() {
+    fn test_shunting_yard() {
         assert_eq!(
-            10,
-            advantage(&Rolls {
-                results: vec![10, 3, 5],
-                max: 10,
-                min: 1
-            })
+            shunting_yard(VecDeque::from([
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(10),
+            ])),
+            VecDeque::from([Token::Value(1), Token::Value(10), Token::Operator('d'),])
         );
         assert_eq!(
-            99,
-            advantage(&Rolls {
-                results: vec![99, 50, 32, 27],
-                max: 100,
-                min: 1
-            })
-        );
-        assert_eq!(
-            5,
-            advantage(&Rolls {
-                results: vec![5],
-                max: 6,
-                min: 1
-            })
-        );
-        assert_eq!(
-            19,
-            advantage(&Rolls {
-                results: vec![19, 19],
-                max: 20,
-                min: 1
-            })
-        );
-        assert_eq!(
-            19,
-            advantage(&Rolls {
-                results: vec![19, 13],
-                max: 20,
-                min: 1
-            })
+            shunting_yard(VecDeque::from([
+                Token::Value(2),
+                Token::Operator('d'),
+                Token::Value(6),
+                Token::Operator('+'),
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(4),
+                Token::Operator('-'),
+                Token::Value(2),
+            ])),
+            VecDeque::from([
+                Token::Value(2),
+                Token::Value(6),
+                Token::Operator('d'),
+                Token::Value(1),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Value(2),
+                Token::Operator('-'),
+                Token::Operator('+'),
+            ])
         );
     }
-
     #[test]
-    fn test_dis() {
+    fn test_shunting_yard_parenthesis() {
         assert_eq!(
-            3,
-            disadvantage(&Rolls {
-                results: vec![10, 3, 5],
-                max: 10,
-                min: 1
-            })
+            shunting_yard(VecDeque::from([
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(4),
+                Token::Operator('*'),
+                Token::OpenParenthesis,
+                Token::Value(5),
+                Token::Operator('-'),
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(4),
+                Token::CloseParenthesis,
+            ])),
+            VecDeque::from([
+                Token::Value(1),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Value(5),
+                Token::Value(1),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Operator('-'),
+                Token::Operator('*'),
+            ])
         );
         assert_eq!(
-            27,
-            disadvantage(&Rolls {
-                results: vec![99, 50, 32, 27],
-                max: 100,
-                min: 1
-            })
-        );
-        assert_eq!(
-            5,
-            disadvantage(&Rolls {
-                results: vec![5],
-                max: 6,
-                min: 1
-            })
-        );
-        assert_eq!(
-            19,
-            disadvantage(&Rolls {
-                results: vec![19, 19],
-                max: 20,
-                min: 1
-            })
-        );
-        assert_eq!(
-            13,
-            disadvantage(&Rolls {
-                results: vec![19, 13],
-                max: 20,
-                min: 1
-            })
-        );
-    }
-
-    #[test]
-    fn test_sum() {
-        assert_eq!(
-            18,
-            sum_rolls(&Rolls {
-                results: vec![10, 3, 5],
-                max: 10,
-                min: 1
-            })
-        );
-        assert_eq!(
-            208,
-            sum_rolls(&Rolls {
-                results: vec![99, 50, 32, 27],
-                max: 100,
-                min: 1
-            })
-        );
-        assert_eq!(
-            5,
-            sum_rolls(&Rolls {
-                results: vec![5],
-                max: 6,
-                min: 1
-            })
-        );
-        assert_eq!(
-            38,
-            sum_rolls(&Rolls {
-                results: vec![19, 19],
-                max: 20,
-                min: 1
-            })
-        );
-        assert_eq!(
-            32,
-            sum_rolls(&Rolls {
-                results: vec![19, 13],
-                max: 20,
-                min: 1
-            })
+            shunting_yard(VecDeque::from([
+                Token::OpenParenthesis,
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(4),
+                Token::CloseParenthesis,
+                Token::Operator('*'),
+                Token::OpenParenthesis,
+                Token::OpenParenthesis,
+                Token::Value(5),
+                Token::Operator('-'),
+                Token::Value(1),
+                Token::Operator('d'),
+                Token::Value(4),
+                Token::CloseParenthesis,
+                Token::CloseParenthesis,
+            ])),
+            VecDeque::from([
+                Token::Value(1),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Value(5),
+                Token::Value(1),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Operator('-'),
+                Token::Operator('*'),
+            ])
         );
     }
 
     #[test]
-    fn test_explode_critical() {
-        let rolls = Rolls {
-            results: vec![1, 2, 3, 4, 5, 6],
-            max: 6,
-            min: 1,
-        };
-        assert!(
-            explode_critical(rolls, Dice::from("1d6"))
-                .results
-                .last()
-                .unwrap()
-                > &6
+    fn test_dice_from() {
+        assert_eq!(
+            Dice::from(Tokens::from("-1+2d4*(5-1)")),
+            Dice(VecDeque::from([
+                Token::Value(1),
+                Token::UnaryOp('-'),
+                Token::Value(2),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Value(5),
+                Token::Value(1),
+                Token::Operator('-'),
+                Token::Operator('*'),
+                Token::Operator('+'),
+            ]))
         );
-    }
-
-    #[test]
-    fn test_explode_fumble() {
-        let rolls = Rolls {
-            results: vec![1, 2, 3, 4, 5, 6],
-            max: 6,
-            min: 1,
-        };
-        assert!(
-            explode_fumble(rolls, Dice::from("1d6"))
-                .results
-                .first()
-                .unwrap()
-                < &1
+        assert_eq!(
+            Dice::from(Tokens::from("1+1")),
+            Dice(VecDeque::from([
+                Token::Value(1),
+                Token::Value(20),
+                Token::Operator('d'),
+            ]))
         );
     }
 }
