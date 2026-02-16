@@ -7,6 +7,7 @@ use std::str::Chars;
 pub enum Token {
     Value(u64),
     Operator(char),
+    UnaryOp(char),
     OpenParenthesis,
     CloseParenthesis,
 }
@@ -23,6 +24,9 @@ impl Token {
                 _ => todo!(),
             },
             Token::OpenParenthesis | Token::CloseParenthesis => -1,
+            // UnaryOp order is subject to change, but must be higher than d &
+            // the other standard math operators
+            Token::UnaryOp(_) => 10,
         }
     }
 }
@@ -40,8 +44,31 @@ impl From<&str> for Tokens {
                 '0'..='9' => {
                     tokens.push_back(tokenize_number(&mut chars));
                 }
-                'd' | '*' | '/' | '+' | '-' => {
+                'd' | '*' | '/' => {
                     tokens.push_back(Token::Operator(current_char));
+                    chars.next();
+                }
+                '+' | '-' => {
+                    if let Some(op) = tokens.back() {
+                        match op {
+                            Token::Operator(_) | Token::OpenParenthesis => {
+                                tokens.push_back(Token::UnaryOp(current_char));
+                            }
+                            _ => {
+                                tokens.push_back(Token::Operator(current_char));
+                            }
+                        }
+                    } else {
+                        tokens.push_back(Token::UnaryOp(current_char));
+                    }
+                    chars.next();
+                }
+                '(' => {
+                    tokens.push_back(Token::OpenParenthesis);
+                    chars.next();
+                }
+                ')' => {
+                    tokens.push_back(Token::CloseParenthesis);
                     chars.next();
                 }
                 _ => {
@@ -72,7 +99,7 @@ fn shunting_yard(mut input: VecDeque<Token>) -> VecDeque<Token> {
     while let Some(token) = input.pop_front() {
         match token {
             Token::Value(_) => out_stack.push_back(token),
-            Token::Operator(_) => {
+            Token::Operator(_) | Token::UnaryOp(_) => {
                 while !op_stack.is_empty() {
                     let popped_op = op_stack.pop_if(|x| x.get_order() > token.get_order());
                     match popped_op {
@@ -140,6 +167,21 @@ mod tests {
                 Token::Value(20),
                 Token::Operator('d'),
                 Token::Value(1),
+                Token::Operator('+'),
+            ]))
+        );
+        assert_eq!(
+            Tokens::from("-1+2d4*(5-1)"),
+            Tokens(VecDeque::from([
+                Token::Value(1),
+                Token::UnaryOp('-'),
+                Token::Value(2),
+                Token::Value(4),
+                Token::Operator('d'),
+                Token::Value(5),
+                Token::Value(1),
+                Token::Operator('-'),
+                Token::Operator('*'),
                 Token::Operator('+'),
             ]))
         );
