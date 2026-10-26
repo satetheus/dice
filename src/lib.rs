@@ -31,7 +31,7 @@ fn validate(input: &Tokens) -> bool {
 
 #[derive(PartialEq, Debug)]
 pub enum Token {
-    Value(u64),
+    Value(i64),
     Operator(char),
     UnaryOp(char),
     OpenParenthesis,
@@ -109,10 +109,10 @@ impl From<&str> for Tokens {
 }
 
 fn tokenize_number(chars: &mut Peekable<Chars>) -> Token {
-    let mut number: u64 = 0;
+    let mut number: i64 = 0;
 
     while let Some(digit) = chars.next_if(|c| c.is_ascii_digit()) {
-        number = number * 10 + (digit.to_digit(10).unwrap_or(0) as u64);
+        number = number * 10 + (digit.to_digit(10).unwrap_or(0) as i64);
     }
 
     Token::Value(number)
@@ -163,6 +163,21 @@ fn shunting_yard(mut input: VecDeque<Token>) -> VecDeque<Token> {
 
     out_stack
 }
+
+/*
+enum Roll {
+    // TODO! this probably isn't necessary. Roll should just be a function of
+    // Dice.
+    Number(i64),
+    Numbers(Vec<i64>),
+}
+
+fn roll(_dice: Dice) -> Roll {
+    let _op_stack: Vec<Token> = vec![];
+    let _solve_stack: VecDeque<Token> = VecDeque::new();
+    todo!();
+}
+*/
 
 #[cfg(test)]
 mod tests {
