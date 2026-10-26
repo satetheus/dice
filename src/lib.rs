@@ -1,7 +1,5 @@
 #! /usr/bin/env rustc
 use std::collections::VecDeque;
-use std::iter::Peekable;
-use std::str::Chars;
 
 #[derive(PartialEq, Debug)]
 pub struct Dice(VecDeque<Token>);
@@ -36,6 +34,7 @@ pub enum Token {
     UnaryOp(char),
     OpenParenthesis,
     CloseParenthesis,
+    None,
 }
 
 impl Token {
@@ -53,6 +52,7 @@ impl Token {
             // UnaryOp order is subject to change, but must be higher than d &
             // the other standard math operators
             Token::UnaryOp(_) => 10,
+            Token::None => 0,
         }
     }
 }
@@ -62,60 +62,49 @@ pub struct Tokens(VecDeque<Token>);
 
 impl From<&str> for Tokens {
     fn from(input: &str) -> Self {
-        let mut tokens: VecDeque<Token> = VecDeque::new();
-        let mut chars = input.chars().peekable();
-
-        while let Some(&current_char) = chars.peek() {
-            match current_char {
-                '0'..='9' => {
-                    tokens.push_back(tokenize_number(&mut chars));
-                }
-                'd' | '*' | '/' => {
-                    tokens.push_back(Token::Operator(current_char));
-                    chars.next();
-                }
-                '+' | '-' => {
-                    if let Some(op) = tokens.back() {
-                        match op {
-                            Token::Operator(_) | Token::OpenParenthesis => {
-                                tokens.push_back(Token::UnaryOp(current_char));
-                            }
-                            _ => {
-                                tokens.push_back(Token::Operator(current_char));
-                            }
-                        }
-                    } else {
-                        tokens.push_back(Token::UnaryOp(current_char));
-                    }
-                    chars.next();
-                }
-                '(' => {
-                    tokens.push_back(Token::OpenParenthesis);
-                    chars.next();
-                }
-                ')' => {
-                    tokens.push_back(Token::CloseParenthesis);
-                    chars.next();
-                }
-                _ => {
-                    println!("skipping character '{}'", current_char);
-                    chars.next();
-                }
-            }
-        }
+        let tokens = tokenize(input);
 
         Tokens(shunting_yard(tokens))
     }
 }
 
-fn tokenize_number(chars: &mut Peekable<Chars>) -> Token {
-    let mut number: i64 = 0;
+fn tokenize(input: &str) -> VecDeque<Token> {
+    let mut chars = input.chars().peekable();
+    let mut tokens: VecDeque<Token> = VecDeque::new();
 
-    while let Some(digit) = chars.next_if(|c| c.is_ascii_digit()) {
-        number = number * 10 + (digit.to_digit(10).unwrap_or(0) as i64);
+    while let Some(&current_char) = chars.peek() {
+        let new_token = match current_char {
+            '0'..='9' => {
+                let prev_digit = tokens.pop_back_if(|x| matches!(*x, Token::Value { .. }));
+                let new_digit = current_char.to_digit(10).unwrap_or(0) as i64;
+                match prev_digit {
+                    Some(Token::Value(n)) => Token::Value(10 * n + new_digit),
+                    _ => Token::Value(new_digit),
+                }
+            }
+            'd' | '*' | '/' => Token::Operator(current_char),
+            '+' | '-' => {
+                if let Some(op) = tokens.back() {
+                    match op {
+                        Token::Operator(_) | Token::OpenParenthesis => Token::UnaryOp(current_char),
+                        _ => Token::Operator(current_char),
+                    }
+                } else {
+                    Token::UnaryOp(current_char)
+                }
+            }
+            '(' => Token::OpenParenthesis,
+            ')' => Token::CloseParenthesis,
+            _ => {
+                println!("skipping character '{}'", current_char);
+                Token::None
+            }
+        };
+        tokens.push_back(new_token);
+        chars.next();
     }
 
-    Token::Value(number)
+    tokens
 }
 
 fn shunting_yard(mut input: VecDeque<Token>) -> VecDeque<Token> {
@@ -152,6 +141,7 @@ fn shunting_yard(mut input: VecDeque<Token>) -> VecDeque<Token> {
                     }
                 }
             }
+            Token::None => {}
         }
     }
 
