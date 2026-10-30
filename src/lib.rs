@@ -339,4 +339,30 @@ mod tests {
             ]))
         );
     }
+
+    #[test]
+    fn test_do_operation() {
+        assert!(do_operation(vec![Token::Value(1), Token::Value(4)], 'd') <= 4);
+        assert!(do_operation(vec![Token::Value(1), Token::Value(4)], 'd') >= 1);
+        assert!(do_operation(vec![Token::Value(20)], 'd') >= 1);
+        assert!(do_operation(vec![Token::Value(20)], 'd') <= 20);
+
+        assert_eq!(do_operation(vec![Token::Value(2), Token::Value(2)], '*'), 4);
+        assert_eq!(
+            do_operation(vec![Token::Value(-2), Token::Value(2)], '*'),
+            -4
+        );
+
+        assert_eq!(
+            do_operation(vec![Token::Value(15), Token::Value(5)], '/'),
+            3
+        );
+        assert_eq!(do_operation(vec![Token::Value(7), Token::Value(2)], '/'), 3);
+
+        assert_eq!(do_operation(vec![Token::Value(1), Token::Value(1)], '+'), 2);
+        assert_eq!(do_operation(vec![Token::Value(1)], '+'), 1);
+
+        assert_eq!(do_operation(vec![Token::Value(1), Token::Value(1)], '-'), 0);
+        assert_eq!(do_operation(vec![Token::Value(1)], '-'), -1);
+    }
 }
