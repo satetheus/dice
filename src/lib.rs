@@ -21,6 +21,30 @@ impl From<Tokens> for Dice {
     }
 }
 
+impl Dice {
+    fn roll(&self) -> Vec<Token> {
+        let mut solve_stack: Vec<Token> = Vec::new();
+
+        for token in &self.0 {
+            let solved_value = match token {
+                Token::Operator(n) => {
+                    let values = solve_stack.split_off(solve_stack.len().saturating_sub(2));
+                    do_operation(values, n)
+                }
+                Token::UnaryOp(n) => {
+                    let values = solve_stack.split_off(solve_stack.len().saturating_sub(1));
+                    do_operation(values, n)
+                }
+                Token::Value(n) => *n,
+                _ => panic!("Invalid Token found"),
+            };
+            solve_stack.push(Token::Value(solved_value));
+        }
+
+        solve_stack
+    }
+}
+
 fn validate(input: &Tokens) -> bool {
     // TODO! more than this check will eventually be needed, but it's is a start
     if !input.0.contains(&Token::Operator('d')) {
@@ -159,31 +183,7 @@ fn shunting_yard(mut input: VecDeque<Token>) -> VecDeque<Token> {
     out_stack
 }
 
-fn roll(dice: &Dice) -> Vec<Token> {
-    let mut op_stack = dice.0.clone();
-    let mut solve_stack: Vec<Token> = Vec::new();
-
-    //TODO this no long needs to pop, & op_stack is unnecessary
-    while let Some(token) = op_stack.pop_front() {
-        let solved_value = match token {
-            Token::Operator(n) => {
-                let values = solve_stack.split_off(op_stack.len().saturating_sub(2));
-                do_operation(values, n)
-            }
-            Token::UnaryOp(n) => {
-                let values = solve_stack.split_off(op_stack.len().saturating_sub(1));
-                do_operation(values, n)
-            }
-            Token::Value(n) => n,
-            _ => panic!("Invalid Token found"),
-        };
-        solve_stack.push(Token::Value(solved_value));
-    }
-
-    solve_stack
-}
-
-fn do_operation(mut values: Vec<Token>, operation: char) -> i64 {
+fn do_operation(mut values: Vec<Token>, operation: &char) -> i64 {
     //TODO there has got to be a better way to do this.
     // likely need to implement a way to access Token inner values.
     let val2 = if let Some(Token::Value(n)) = values.pop() {
@@ -194,7 +194,7 @@ fn do_operation(mut values: Vec<Token>, operation: char) -> i64 {
     let val1 = if let Some(Token::Value(n)) = values.pop() {
         n
     } else {
-        if operation == 'd' {
+        if operation == &'d' {
             1
         } else {
             0
@@ -395,33 +395,47 @@ mod tests {
     #[test]
     fn test_roll() {
         let test_dice = Dice::from(Tokens::from("1d4+1"));
-        let test_roll = roll(&test_dice);
-        assert!(test_roll >= [Token::Value(2)].to_vec() && test_roll <= [Token::Value(5)].to_vec());
+        let test_roll = &test_dice.roll();
+        assert!(
+            *test_roll >= [Token::Value(2)].to_vec() && *test_roll <= [Token::Value(5)].to_vec()
+        );
     }
 
     #[test]
     fn test_do_operation() {
-        assert!(do_operation(vec![Token::Value(1), Token::Value(4)], 'd') <= 4);
-        assert!(do_operation(vec![Token::Value(1), Token::Value(4)], 'd') >= 1);
-        assert!(do_operation(vec![Token::Value(20)], 'd') >= 1);
-        assert!(do_operation(vec![Token::Value(20)], 'd') <= 20);
+        assert!(do_operation(vec![Token::Value(1), Token::Value(4)], &'d') <= 4);
+        assert!(do_operation(vec![Token::Value(1), Token::Value(4)], &'d') >= 1);
+        assert!(do_operation(vec![Token::Value(20)], &'d') >= 1);
+        assert!(do_operation(vec![Token::Value(20)], &'d') <= 20);
 
-        assert_eq!(do_operation(vec![Token::Value(2), Token::Value(2)], '*'), 4);
         assert_eq!(
-            do_operation(vec![Token::Value(-2), Token::Value(2)], '*'),
+            do_operation(vec![Token::Value(2), Token::Value(2)], &'*'),
+            4
+        );
+        assert_eq!(
+            do_operation(vec![Token::Value(-2), Token::Value(2)], &'*'),
             -4
         );
 
         assert_eq!(
-            do_operation(vec![Token::Value(15), Token::Value(5)], '/'),
+            do_operation(vec![Token::Value(15), Token::Value(5)], &'/'),
             3
         );
-        assert_eq!(do_operation(vec![Token::Value(7), Token::Value(2)], '/'), 3);
+        assert_eq!(
+            do_operation(vec![Token::Value(7), Token::Value(2)], &'/'),
+            3
+        );
 
-        assert_eq!(do_operation(vec![Token::Value(1), Token::Value(1)], '+'), 2);
-        assert_eq!(do_operation(vec![Token::Value(1)], '+'), 1);
+        assert_eq!(
+            do_operation(vec![Token::Value(1), Token::Value(1)], &'+'),
+            2
+        );
+        assert_eq!(do_operation(vec![Token::Value(1)], &'+'), 1);
 
-        assert_eq!(do_operation(vec![Token::Value(1), Token::Value(1)], '-'), 0);
-        assert_eq!(do_operation(vec![Token::Value(1)], '-'), -1);
+        assert_eq!(
+            do_operation(vec![Token::Value(1), Token::Value(1)], &'-'),
+            0
+        );
+        assert_eq!(do_operation(vec![Token::Value(1)], &'-'), -1);
     }
 }
