@@ -341,6 +341,13 @@ mod tests {
     }
 
     #[test]
+    fn test_roll() {
+        let test_dice = Dice::from(Tokens::from("1d4+1"));
+        let test_roll = roll(&test_dice);
+        assert!(test_roll >= [Token::Value(2)].to_vec() && test_roll <= [Token::Value(5)].to_vec());
+    }
+
+    #[test]
     fn test_do_operation() {
         assert!(do_operation(vec![Token::Value(1), Token::Value(4)], 'd') <= 4);
         assert!(do_operation(vec![Token::Value(1), Token::Value(4)], 'd') >= 1);
