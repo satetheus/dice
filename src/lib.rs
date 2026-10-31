@@ -1,7 +1,8 @@
 #! /usr/bin/env rustc
+use rand::distributions::{Distribution, Uniform};
 use std::collections::VecDeque;
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Dice(VecDeque<Token>);
 
 impl From<Tokens> for Dice {
@@ -27,7 +28,7 @@ fn validate(input: &Tokens) -> bool {
     true
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, PartialOrd, Debug)]
 pub enum Token {
     Value(i64),
     Operator(char),
@@ -154,20 +155,67 @@ fn shunting_yard(mut input: VecDeque<Token>) -> VecDeque<Token> {
     out_stack
 }
 
-/*
-enum Roll {
-    // TODO! this probably isn't necessary. Roll should just be a function of
-    // Dice.
-    Number(i64),
-    Numbers(Vec<i64>),
+fn roll(dice: &Dice) -> Vec<Token> {
+    let mut op_stack = dice.0.clone();
+    let mut solve_stack: Vec<Token> = Vec::new();
+
+    //TODO this no long needs to pop, & op_stack is unnecessary
+    while let Some(token) = op_stack.pop_front() {
+        let solved_value = match token {
+            Token::Operator(n) => {
+                let values = solve_stack.split_off(op_stack.len().saturating_sub(2));
+                do_operation(values, n)
+            }
+            Token::UnaryOp(n) => {
+                let values = solve_stack.split_off(op_stack.len().saturating_sub(1));
+                do_operation(values, n)
+            }
+            Token::Value(n) => n,
+            _ => panic!("Invalid Token found"),
+        };
+        solve_stack.push(Token::Value(solved_value));
+    }
+
+    solve_stack
 }
 
-fn roll(_dice: Dice) -> Roll {
-    let _op_stack: Vec<Token> = vec![];
-    let _solve_stack: VecDeque<Token> = VecDeque::new();
-    todo!();
+fn do_operation(mut values: Vec<Token>, operation: char) -> i64 {
+    //TODO there has got to be a better way to do this.
+    // likely need to implement a way to access Token inner values.
+    let val2 = if let Some(Token::Value(n)) = values.pop() {
+        n
+    } else {
+        0
+    };
+    let val1 = if let Some(Token::Value(n)) = values.pop() {
+        n
+    } else {
+        if operation == 'd' {
+            1
+        } else {
+            0
+        }
+    };
+
+    match operation {
+        'd' => {
+            let mut rng = rand::thread_rng();
+            let die_size = Uniform::from(1..=val2);
+            let mut output: i64 = 0;
+
+            for _ in 1..=val1 {
+                output += die_size.sample(&mut rng)
+            }
+
+            output
+        }
+        '*' => val1 * val2,
+        '/' => val1 / val2,
+        '+' => val1 + val2,
+        '-' => val1 - val2,
+        _ => panic!("unrecognized operation"),
+    }
 }
-*/
 
 #[cfg(test)]
 mod tests {
