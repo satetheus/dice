@@ -8,6 +8,9 @@ pub struct Dice(VecDeque<Token>);
 impl From<Tokens> for Dice {
     fn from(input: Tokens) -> Self {
         if !validate(&input) {
+            // TODO! this behavior of outputting something valid from invalid
+            // input just isn't a good idea. If the input is not valid, the
+            // from function should fail.
             println!("Because of the above error, the supplied dice notation");
             println!("could not be parsed. We took the liberty of supplying a");
             println!("1d20, in case that is what you wanted.");
@@ -19,7 +22,7 @@ impl From<Tokens> for Dice {
 }
 
 fn validate(input: &Tokens) -> bool {
-    // todo! more than this check will eventually be needed, but it's is a start
+    // TODO! more than this check will eventually be needed, but it's is a start
     if !input.0.contains(&Token::Operator('d')) {
         println!("Supplied dice notation does not contain a dice symbol: 'd'");
         return false;
@@ -83,6 +86,7 @@ fn tokenize(input: &str) -> VecDeque<Token> {
                     _ => Token::Value(new_digit),
                 }
             }
+            //TODO 'd' can also be a UnaryOp (ex: d20)
             'd' | '*' | '/' => Token::Operator(current_char),
             '+' | '-' => {
                 if let Some(op) = tokens.back() {
