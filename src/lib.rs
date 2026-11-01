@@ -83,6 +83,13 @@ impl Token {
             Token::None => 0,
         }
     }
+
+    fn get_value(self) -> i64 {
+        match self {
+            Token::Value(n) => n,
+            _ => panic!("not a value type"),
+        }
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -184,22 +191,15 @@ fn shunting_yard(mut input: VecDeque<Token>) -> VecDeque<Token> {
 }
 
 fn do_operation(mut values: Vec<Token>, operation: &char) -> i64 {
-    //TODO there has got to be a better way to do this.
-    // likely need to implement a way to access Token inner values.
-    let val2 = if let Some(Token::Value(n)) = values.pop() {
-        n
-    } else {
-        0
-    };
-    let val1 = if let Some(Token::Value(n)) = values.pop() {
-        n
-    } else {
-        if operation == &'d' {
-            1
+    let val2 = values.pop().unwrap_or(Token::Value(0)).get_value();
+    let val1 = values
+        .pop()
+        .unwrap_or(if operation == &'d' {
+            Token::Value(1)
         } else {
-            0
-        }
-    };
+            Token::Value(0)
+        })
+        .get_value();
 
     match operation {
         'd' => {
