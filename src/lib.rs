@@ -3,7 +3,7 @@ pub mod roll_dice {
     use rand::distributions::{Distribution, Uniform};
     use std::collections::VecDeque;
 
-    #[derive(Clone, PartialEq, PartialOrd, Debug)]
+    #[derive(Clone, Eq, PartialEq, PartialOrd, Debug)]
     pub enum Token {
         Value(i64),
         Operator(char),
@@ -13,20 +13,19 @@ pub mod roll_dice {
         None,
     }
 
-    #[derive(Clone, PartialEq, Debug)]
+    #[derive(Clone, Eq, PartialEq, Debug)]
     pub struct Dice(pub VecDeque<Token>);
 
     impl From<Tokens> for Dice {
         fn from(input: Tokens) -> Self {
-            if !&input.validate() {
-                panic!("Invalid input: {:?}", &input);
-            }
+            assert!(!!&input.validate(), "Invalid input: {:?}", &input);
 
-            Dice(input.0)
+            Self(input.0)
         }
     }
 
     impl Dice {
+        #[must_use]
         pub fn roll(&self) -> Vec<Token> {
             let mut solve_stack: Vec<Token> = Vec::new();
 
@@ -50,14 +49,17 @@ pub mod roll_dice {
         }
 
         //TODO this should be a private function. Its a helper function for roll
+        #[must_use]
         pub fn do_operation(mut values: Vec<Token>, operation: &char) -> i64 {
             let val2 = values.pop().unwrap_or(Token::Value(0)).get_value();
             let val1 = values
                 .pop()
-                .unwrap_or(if operation == &'d' {
-                    Token::Value(1)
-                } else {
-                    Token::Value(0)
+                .unwrap_or_else(|| {
+                    if operation == &'d' {
+                        Token::Value(1)
+                    } else {
+                        Token::Value(0)
+                    }
                 })
                 .get_value();
 
@@ -68,7 +70,7 @@ pub mod roll_dice {
                     let mut output: i64 = 0;
 
                     for _ in 1..=val1 {
-                        output += die_size.sample(&mut rng)
+                        output += die_size.sample(&mut rng);
                     }
 
                     output
@@ -82,7 +84,7 @@ pub mod roll_dice {
         }
     }
 
-    #[derive(PartialEq, Debug)]
+    #[derive(Eq, PartialEq, Debug)]
     pub struct Tokens(pub VecDeque<Token>);
 
     impl From<&str> for Tokens {
@@ -94,7 +96,7 @@ pub mod roll_dice {
     }
 
     impl Tokens {
-        fn tokenize(input: &str) -> Tokens {
+        fn tokenize(input: &str) -> Self {
             let mut chars = input.chars().peekable();
             let mut tokens: VecDeque<Token> = VecDeque::new();
 
@@ -102,7 +104,7 @@ pub mod roll_dice {
                 let new_token = match current_char {
                     '0'..='9' => {
                         let prev_digit = tokens.pop_back_if(|x| matches!(*x, Token::Value { .. }));
-                        let new_digit = current_char.to_digit(10).unwrap_or(0) as i64;
+                        let new_digit = i64::from(current_char.to_digit(10).unwrap_or(0));
                         match prev_digit {
                             Some(Token::Value(n)) => Token::Value(10 * n + new_digit),
                             _ => Token::Value(new_digit),
@@ -111,21 +113,19 @@ pub mod roll_dice {
                     //TODO 'd' can also be a UnaryOp (ex: d20)
                     'd' | '*' | '/' => Token::Operator(current_char),
                     '+' | '-' => {
-                        if let Some(op) = tokens.back() {
-                            match op {
+                        tokens
+                            .back()
+                            .map_or(Token::UnaryOp(current_char), |op| match op {
                                 Token::Operator(_) | Token::OpenParenthesis => {
                                     Token::UnaryOp(current_char)
                                 }
                                 _ => Token::Operator(current_char),
-                            }
-                        } else {
-                            Token::UnaryOp(current_char)
-                        }
+                            })
                     }
                     '(' => Token::OpenParenthesis,
                     ')' => Token::CloseParenthesis,
                     _ => {
-                        println!("skipping character '{}'", current_char);
+                        println!("skipping character '{current_char}'");
                         Token::None
                     }
                 };
@@ -133,7 +133,7 @@ pub mod roll_dice {
                 chars.next();
             }
 
-            Tokens(tokens)
+            Self(tokens)
         }
 
         fn validate(&self) -> bool {
@@ -146,7 +146,8 @@ pub mod roll_dice {
             true
         }
 
-        pub fn shunting_yard(mut self) -> Tokens {
+        #[must_use]
+        pub fn shunting_yard(mut self) -> Self {
             let mut op_stack: Vec<Token> = vec![];
             let mut out_stack: VecDeque<Token> = VecDeque::new();
 
@@ -190,32 +191,30 @@ pub mod roll_dice {
                 }
             }
 
-            Tokens(out_stack)
+            Self(out_stack)
         }
     }
 
     impl Token {
         fn get_order(&self) -> i16 {
             match self {
-                Token::Value(_) => -1,
-                Token::Operator(op) => match op {
+                Self::Operator(op) => match op {
                     '+' | '-' => 1,
                     '*' | '/' => 2,
                     '^' => 3,
                     'd' => 4,
                     _ => todo!(),
                 },
-                Token::OpenParenthesis | Token::CloseParenthesis => -1,
                 // UnaryOp order is subject to change, but must be higher than d &
                 // the other standard math operators
-                Token::UnaryOp(_) => 10,
-                Token::None => 0,
+                Self::UnaryOp(_) => 10,
+                _ => -1,
             }
         }
 
         fn get_value(self) -> i64 {
             match self {
-                Token::Value(n) => n,
+                Self::Value(n) => n,
                 _ => panic!("not a value type"),
             }
         }
@@ -405,16 +404,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "Invalid input:")]
     fn test_dice_from_panics() {
-        assert_eq!(
-            Dice::from(Tokens::from("1+1")),
-            Dice(VecDeque::from([
-                Token::Value(1),
-                Token::Value(20),
-                Token::Operator('d'),
-            ]))
-        );
+        let _ = Dice::from(Tokens::from("1+1"));
     }
 
     #[test]
