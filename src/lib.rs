@@ -270,6 +270,16 @@ mod tests {
                 Token::Operator('+'),
             ]))
         );
+        assert_eq!(
+            Tokens::from("-1+(-1)"),
+            Tokens(VecDeque::from([
+                Token::Value(1),
+                Token::UnaryOp('-'),
+                Token::Value(1),
+                Token::UnaryOp('-'),
+                Token::Operator('+'),
+            ]))
+        );
     }
 
     #[test]
