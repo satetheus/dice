@@ -28,6 +28,11 @@ panic = "deny"
 exit = "deny"
 as_conversions = "deny"
 
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+opt-level = 2
 
 [dependencies]
-rand = "0.9.5"
+rand = { version = "0.10.3", default-features = false, features = ["thread_rng"] }
