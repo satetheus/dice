@@ -184,10 +184,8 @@ pub mod roll_dice {
                 }
             }
 
-            if !op_stack.is_empty() {
-                for _ in 0..op_stack.len() {
-                    out_stack.push_back(op_stack.pop().expect("this should always work"));
-                }
+            while !op_stack.is_empty() {
+                out_stack.push(op_stack.pop().unwrap_or(Token::None));
             }
 
             Self(out_stack)
