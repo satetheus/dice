@@ -212,14 +212,14 @@ pub mod roll_dice {
     }
 
     impl Token {
-        fn get_order(&self) -> i16 {
+        const fn get_order(&self) -> i16 {
             match self {
                 Self::Operator(op) => match op {
                     '+' | '-' => 1,
                     '*' | '/' => 2,
                     '^' => 3,
                     'd' => 4,
-                    _ => todo!(),
+                    _ => -1,
                 },
                 // UnaryOp order is subject to change, but must be higher than d &
                 // the other standard math operators
