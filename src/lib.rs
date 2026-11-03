@@ -69,18 +69,35 @@ pub mod roll_dice {
                     let mut output: i64 = 0;
 
                     for _ in 1..=val1 {
-                        output += die_size.sample(&mut rng);
+                        output = overflow_op('+', output, die_size.sample(&mut rng));
                     }
 
                     output
                 }
-                '*' => val1 * val2,
-                '/' => val1 / val2,
-                '+' => val1 + val2,
-                '-' => val1 - val2,
+                '*' => overflow_op('*', val1, val2),
+                '/' => overflow_op('/', val1, val2),
+                '+' => overflow_op('+', val1, val2),
+                '-' => overflow_op('-', val1, val2),
                 _ => panic!("unrecognized operation"),
             }
         }
+    }
+
+    fn overflow_op(op: char, val1: i64, val2: i64) -> i64 {
+        let overflow = match op {
+            '*' => val1.overflowing_mul(val2),
+            '/' => val1.overflowing_div(val2), // can div even overflow?
+            '+' => val1.overflowing_add(val2),
+            '-' => val1.overflowing_sub(val2),
+            _ => {
+                println!("'{op}' not able to overflow");
+                (0, false)
+            },
+        };
+        if overflow.1 {
+            println!("WARNING: operation overflowed. Output is likely wrong.");
+        }
+        overflow.0
     }
 
     #[derive(Eq, PartialEq, Debug)]
@@ -105,7 +122,9 @@ pub mod roll_dice {
                         let prev_digit = tokens.pop_if(|x| matches!(*x, Token::Value { .. }));
                         let new_digit = i64::from(current_char.to_digit(10).unwrap_or(0));
                         match prev_digit {
-                            Some(Token::Value(n)) => Token::Value(10 * n + new_digit),
+                            Some(Token::Value(n)) => Token::Value(
+                                overflow_op('+', overflow_op('*', 10, n), new_digit),
+                            ),
                             _ => Token::Value(new_digit),
                         }
                     }
