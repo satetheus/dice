@@ -1,6 +1,6 @@
 #! /usr/bin/env rustc
 pub mod roll_dice {
-    use rand::distributions::{Distribution, Uniform};
+    use rand::distr::{Distribution, Uniform};
 
     #[derive(Clone, Eq, PartialEq, PartialOrd, Debug)]
     pub enum Token {
@@ -64,8 +64,8 @@ pub mod roll_dice {
 
             match operation {
                 'd' => {
-                    let mut rng = rand::thread_rng();
-                    let die_size = Uniform::from(1..=val2);
+                    let mut rng = rand::rng();
+                    let die_size = Uniform::new_inclusive(1, val2).expect("not a valid dice range");
                     let mut output: i64 = 0;
 
                     for _ in 1..=val1 {
@@ -92,7 +92,7 @@ pub mod roll_dice {
             _ => {
                 println!("'{op}' not able to overflow");
                 (0, false)
-            },
+            }
         };
         if overflow.1 {
             println!("WARNING: operation overflowed. Output is likely wrong.");
@@ -122,9 +122,9 @@ pub mod roll_dice {
                         let prev_digit = tokens.pop_if(|x| matches!(*x, Token::Value { .. }));
                         let new_digit = i64::from(current_char.to_digit(10).unwrap_or(0));
                         match prev_digit {
-                            Some(Token::Value(n)) => Token::Value(
-                                overflow_op('+', overflow_op('*', 10, n), new_digit),
-                            ),
+                            Some(Token::Value(n)) => {
+                                Token::Value(overflow_op('+', overflow_op('*', 10, n), new_digit))
+                            }
                             _ => Token::Value(new_digit),
                         }
                     }
