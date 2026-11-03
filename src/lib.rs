@@ -1,7 +1,6 @@
 #! /usr/bin/env rustc
 pub mod roll_dice {
     use rand::distributions::{Distribution, Uniform};
-    use std::collections::VecDeque;
 
     #[derive(Clone, Eq, PartialEq, PartialOrd, Debug)]
     pub enum Token {
@@ -14,7 +13,7 @@ pub mod roll_dice {
     }
 
     #[derive(Clone, Eq, PartialEq, Debug)]
-    pub struct Dice(pub VecDeque<Token>);
+    pub struct Dice(pub Vec<Token>);
 
     impl From<Tokens> for Dice {
         fn from(input: Tokens) -> Self {
@@ -85,7 +84,7 @@ pub mod roll_dice {
     }
 
     #[derive(Eq, PartialEq, Debug)]
-    pub struct Tokens(pub VecDeque<Token>);
+    pub struct Tokens(pub Vec<Token>);
 
     impl From<&str> for Tokens {
         fn from(input: &str) -> Self {
@@ -98,12 +97,12 @@ pub mod roll_dice {
     impl Tokens {
         fn tokenize(input: &str) -> Self {
             let mut chars = input.chars().peekable();
-            let mut tokens: VecDeque<Token> = VecDeque::new();
+            let mut tokens: Vec<Token> = Vec::new();
 
             while let Some(&current_char) = chars.peek() {
                 let new_token = match current_char {
                     '0'..='9' => {
-                        let prev_digit = tokens.pop_back_if(|x| matches!(*x, Token::Value { .. }));
+                        let prev_digit = tokens.pop_if(|x| matches!(*x, Token::Value { .. }));
                         let new_digit = i64::from(current_char.to_digit(10).unwrap_or(0));
                         match prev_digit {
                             Some(Token::Value(n)) => Token::Value(10 * n + new_digit),
@@ -114,7 +113,7 @@ pub mod roll_dice {
                     'd' | '*' | '/' => Token::Operator(current_char),
                     '+' | '-' => {
                         tokens
-                            .back()
+                            .last()
                             .map_or(Token::UnaryOp(current_char), |op| match op {
                                 Token::Operator(_) | Token::OpenParenthesis => {
                                     Token::UnaryOp(current_char)
@@ -129,7 +128,7 @@ pub mod roll_dice {
                         Token::None
                     }
                 };
-                tokens.push_back(new_token);
+                tokens.push(new_token);
                 chars.next();
             }
 
@@ -147,19 +146,19 @@ pub mod roll_dice {
         }
 
         #[must_use]
-        pub fn shunting_yard(mut self) -> Self {
+        pub fn shunting_yard(self) -> Self {
             let mut op_stack: Vec<Token> = vec![];
-            let mut out_stack: VecDeque<Token> = VecDeque::new();
+            let mut out_stack: Vec<Token> = Vec::new();
 
-            while let Some(token) = self.0.pop_front() {
+            for token in self.0 {
                 match token {
-                    Token::Value(_) => out_stack.push_back(token),
+                    Token::Value(_) => out_stack.push(token),
                     Token::Operator(_) | Token::UnaryOp(_) => {
                         while !op_stack.is_empty() {
                             let popped_op = op_stack.pop_if(|x| x.get_order() > token.get_order());
                             match popped_op {
                                 Some(op) => {
-                                    out_stack.push_back(op);
+                                    out_stack.push(op);
                                 }
                                 None => break,
                             }
@@ -175,7 +174,7 @@ pub mod roll_dice {
                                     if op == Token::OpenParenthesis {
                                         break;
                                     }
-                                    out_stack.push_back(op);
+                                    out_stack.push(op);
                                 }
                                 None => break,
                             }
@@ -224,13 +223,12 @@ pub mod roll_dice {
 #[cfg(test)]
 mod tests {
     use crate::roll_dice::{Dice, Token, Tokens};
-    use std::collections::VecDeque;
 
     #[test]
     fn test_tokenization() {
         assert_eq!(
             Tokens::from("1 d10"),
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::Value(1),
                 Token::Value(10),
                 Token::Operator('d'),
@@ -238,7 +236,7 @@ mod tests {
         );
         assert_eq!(
             Tokens::from("1d20"),
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::Value(1),
                 Token::Value(20),
                 Token::Operator('d'),
@@ -246,7 +244,7 @@ mod tests {
         );
         assert_eq!(
             Tokens::from("1d20+1"),
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::Value(1),
                 Token::Value(20),
                 Token::Operator('d'),
@@ -256,7 +254,7 @@ mod tests {
         );
         assert_eq!(
             Tokens::from("-1+2d4*(5-1)"),
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::Value(1),
                 Token::UnaryOp('-'),
                 Token::Value(2),
@@ -271,7 +269,7 @@ mod tests {
         );
         assert_eq!(
             Tokens::from("-1+(-1)"),
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::Value(1),
                 Token::UnaryOp('-'),
                 Token::Value(1),
@@ -284,20 +282,20 @@ mod tests {
     #[test]
     fn test_shunting_yard() {
         assert_eq!(
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::Value(1),
                 Token::Operator('d'),
                 Token::Value(10),
             ]))
             .shunting_yard(),
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::Value(1),
                 Token::Value(10),
                 Token::Operator('d'),
             ]))
         );
         assert_eq!(
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::Value(2),
                 Token::Operator('d'),
                 Token::Value(6),
@@ -309,7 +307,7 @@ mod tests {
                 Token::Value(2),
             ]))
             .shunting_yard(),
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::Value(2),
                 Token::Value(6),
                 Token::Operator('d'),
@@ -325,7 +323,7 @@ mod tests {
     #[test]
     fn test_shunting_yard_parenthesis() {
         assert_eq!(
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::Value(1),
                 Token::Operator('d'),
                 Token::Value(4),
@@ -339,7 +337,7 @@ mod tests {
                 Token::CloseParenthesis,
             ]))
             .shunting_yard(),
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::Value(1),
                 Token::Value(4),
                 Token::Operator('d'),
@@ -352,7 +350,7 @@ mod tests {
             ]))
         );
         assert_eq!(
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::OpenParenthesis,
                 Token::Value(1),
                 Token::Operator('d'),
@@ -370,7 +368,7 @@ mod tests {
                 Token::CloseParenthesis,
             ]))
             .shunting_yard(),
-            Tokens(VecDeque::from([
+            Tokens(Vec::from([
                 Token::Value(1),
                 Token::Value(4),
                 Token::Operator('d'),
@@ -388,7 +386,7 @@ mod tests {
     fn test_dice_from() {
         assert_eq!(
             Dice::from(Tokens::from("-1+2d4*(5-1)")),
-            Dice(VecDeque::from([
+            Dice(Vec::from([
                 Token::Value(1),
                 Token::UnaryOp('-'),
                 Token::Value(2),
