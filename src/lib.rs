@@ -32,14 +32,17 @@ pub mod roll_dice {
                 let solved_value = match token {
                     Token::Operator(n) => {
                         let values = solve_stack.split_off(solve_stack.len().saturating_sub(2));
-                        Self::do_operation(values, n)
+                        Self::do_operation(values, n).unwrap_or(0)
                     }
                     Token::UnaryOp(n) => {
                         let values = solve_stack.split_off(solve_stack.len().saturating_sub(1));
-                        Self::do_operation(values, n)
+                        Self::do_operation(values, n).unwrap_or(0)
                     }
                     Token::Value(n) => *n,
-                    _ => panic!("Invalid Token found"),
+                    other_token => {
+                        println!("Invalid Token found: {other_token:?}");
+                        0
+                    },
                 };
                 solve_stack.push(Token::Value(solved_value));
             }
@@ -49,18 +52,10 @@ pub mod roll_dice {
 
         //TODO this should be a private function. Its a helper function for roll
         #[must_use]
-        pub fn do_operation(mut values: Vec<Token>, operation: &char) -> i64 {
-            let val2 = values.pop().unwrap_or(Token::Value(0)).get_value();
-            let val1 = values
-                .pop()
-                .unwrap_or_else(|| {
-                    if operation == &'d' {
-                        Token::Value(1)
-                    } else {
-                        Token::Value(0)
-                    }
-                })
-                .get_value();
+        pub fn do_operation(mut values: Vec<Token>, operation: &char) -> Option<i64> {
+            let val1_default = i64::from(operation == &'d');
+            let val2 = get_value(values.pop().as_ref(), 0);
+            let val1 = get_value(values.pop().as_ref(), val1_default);
 
             match operation {
                 'd' => {
@@ -72,13 +67,16 @@ pub mod roll_dice {
                         output = overflow_op('+', output, die_size.sample(&mut rng));
                     }
 
-                    output
+                    Some(output)
                 }
-                '*' => overflow_op('*', val1, val2),
-                '/' => overflow_op('/', val1, val2),
-                '+' => overflow_op('+', val1, val2),
-                '-' => overflow_op('-', val1, val2),
-                _ => panic!("unrecognized operation"),
+                '*' => Some(overflow_op('*', val1, val2)),
+                '/' => Some(overflow_op('/', val1, val2)),
+                '+' => Some(overflow_op('+', val1, val2)),
+                '-' => Some(overflow_op('-', val1, val2)),
+                other => {
+                    println!("unrecognized operation: {other}");
+                    None
+                },
             }
         }
     }
@@ -227,12 +225,14 @@ pub mod roll_dice {
                 _ => -1,
             }
         }
+    }
 
-        fn get_value(self) -> i64 {
-            match self {
-                Self::Value(n) => n,
-                _ => panic!("not a value type"),
-            }
+    const fn get_value(input: Option<&Token>, default: i64) -> i64 {
+        match input {
+            Some(Token::Value(n)) => *n,
+            _ => {
+                default
+            },
         }
     }
 }
@@ -435,39 +435,39 @@ mod tests {
 
     #[test]
     fn test_do_operation() {
-        assert!(Dice::do_operation(vec![Token::Value(1), Token::Value(4)], &'d') <= 4);
-        assert!(Dice::do_operation(vec![Token::Value(1), Token::Value(4)], &'d') >= 1);
-        assert!(Dice::do_operation(vec![Token::Value(20)], &'d') >= 1);
-        assert!(Dice::do_operation(vec![Token::Value(20)], &'d') <= 20);
+        assert!(Dice::do_operation(vec![Token::Value(1), Token::Value(4)], &'d') <= Some(4));
+        assert!(Dice::do_operation(vec![Token::Value(1), Token::Value(4)], &'d') >= Some(1));
+        assert!(Dice::do_operation(vec![Token::Value(20)], &'d') >= Some(1));
+        assert!(Dice::do_operation(vec![Token::Value(20)], &'d') <= Some(20));
 
         assert_eq!(
             Dice::do_operation(vec![Token::Value(2), Token::Value(2)], &'*'),
-            4
+            Some(4)
         );
         assert_eq!(
             Dice::do_operation(vec![Token::Value(-2), Token::Value(2)], &'*'),
-            -4
+            Some(-4)
         );
 
         assert_eq!(
             Dice::do_operation(vec![Token::Value(15), Token::Value(5)], &'/'),
-            3
+            Some(3)
         );
         assert_eq!(
             Dice::do_operation(vec![Token::Value(7), Token::Value(2)], &'/'),
-            3
+            Some(3)
         );
 
         assert_eq!(
             Dice::do_operation(vec![Token::Value(1), Token::Value(1)], &'+'),
-            2
+            Some(2)
         );
-        assert_eq!(Dice::do_operation(vec![Token::Value(1)], &'+'), 1);
+        assert_eq!(Dice::do_operation(vec![Token::Value(1)], &'+'), Some(1));
 
         assert_eq!(
             Dice::do_operation(vec![Token::Value(1), Token::Value(1)], &'-'),
-            0
+            Some(0)
         );
-        assert_eq!(Dice::do_operation(vec![Token::Value(1)], &'-'), -1);
+        assert_eq!(Dice::do_operation(vec![Token::Value(1)], &'-'), Some(-1));
     }
 }
