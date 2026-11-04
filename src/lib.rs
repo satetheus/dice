@@ -15,11 +15,16 @@ pub mod roll_dice {
     #[derive(Clone, Eq, PartialEq, Debug)]
     pub struct Dice(pub Vec<Token>);
 
-    impl From<Tokens> for Dice {
-        fn from(input: Tokens) -> Self {
-            assert!(!!&input.validate(), "Invalid input: {:?}", &input);
+    impl TryFrom<Tokens> for Dice {
+        type Error = String;
 
-            Self(input.0)
+        fn try_from(input: Tokens) -> Result<Self, Self::Error> {
+            if input.validate() {
+                Ok(Self(input.0))
+            } else {
+                //TODO set this to include better feedback
+                Err("Dice notation could not be parsed".to_string())
+            }
         }
     }
 
@@ -42,7 +47,7 @@ pub mod roll_dice {
                     other_token => {
                         println!("Invalid Token found: {other_token:?}");
                         0
-                    },
+                    }
                 };
                 solve_stack.push(Token::Value(solved_value));
             }
@@ -60,14 +65,22 @@ pub mod roll_dice {
             match operation {
                 'd' => {
                     let mut rng = rand::rng();
-                    let die_size = Uniform::new_inclusive(1, val2).expect("not a valid dice range");
-                    let mut output: i64 = 0;
+                    let die_size = Uniform::new_inclusive(1, val2);
+                    match die_size {
+                        Ok(size) => {
+                            let mut output: i64 = 0;
 
-                    for _ in 1..=val1 {
-                        output = overflow_op('+', output, die_size.sample(&mut rng));
+                            for _ in 1..=val1 {
+                                output = overflow_op('+', output, size.sample(&mut rng));
+                            }
+
+                            Some(output)
+                        }
+                        Err(e) => {
+                            println!("Not a valid dice range: {e}");
+                            None
+                        }
                     }
-
-                    Some(output)
                 }
                 '*' => Some(overflow_op('*', val1, val2)),
                 '/' => Some(overflow_op('/', val1, val2)),
@@ -76,7 +89,7 @@ pub mod roll_dice {
                 other => {
                     println!("unrecognized operation: {other}");
                     None
-                },
+                }
             }
         }
     }
@@ -230,9 +243,7 @@ pub mod roll_dice {
     const fn get_value(input: Option<&Token>, default: i64) -> i64 {
         match input {
             Some(Token::Value(n)) => *n,
-            _ => {
-                default
-            },
+            _ => default,
         }
     }
 }
@@ -402,7 +413,7 @@ mod tests {
     #[test]
     fn test_dice_from() {
         assert_eq!(
-            Dice::from(Tokens::from("-1+2d4*(5-1)")),
+            Dice::try_from(Tokens::from("-1+2d4*(5-1)")).unwrap(),
             Dice(Vec::from([
                 Token::Value(1),
                 Token::UnaryOp('-'),
@@ -419,14 +430,16 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Invalid input:")]
-    fn test_dice_from_panics() {
-        let _ = Dice::from(Tokens::from("1+1"));
+    fn test_dice_from_fails_missing_d() {
+        assert_eq!(
+            Dice::try_from(Tokens::from("1+1")),
+            Err("Dice notation could not be parsed".to_string())
+        );
     }
 
     #[test]
     fn test_roll() {
-        let test_dice = Dice::from(Tokens::from("1d4+1"));
+        let test_dice = Dice::try_from(Tokens::from("1d4+1")).unwrap();
         let test_roll = &test_dice.roll();
         assert!(
             *test_roll >= [Token::Value(2)].to_vec() && *test_roll <= [Token::Value(5)].to_vec()

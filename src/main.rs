@@ -15,8 +15,16 @@ fn main() {
     let joined = args
         .into_iter()
         .filter(|n| !n.contains("--"))
-        .collect::<Vec<_>>()
-        .join("");
-    let dice = Dice::from(Tokens::from(joined.as_str()));
-    println!("{:?}", dice.roll());
+        .collect::<String>();
+    let dice = Dice::try_from(Tokens::from(joined.as_str()));
+
+    match dice {
+        Ok(n) => {
+            //TODO this needs to change because it relies on Debug
+            println!("{:?}", n.roll());
+        }
+        Err(e) => {
+            println!("There was an error parsing the dice notation: {e}");
+        }
+    }
 }
