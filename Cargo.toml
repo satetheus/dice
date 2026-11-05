@@ -32,7 +32,7 @@ as_conversions = "deny"
 strip = true
 lto = true
 codegen-units = 1
-opt-level = 2
+panic = "abort"
 
 [dependencies]
 rand = { version = "0.10.3", default-features = false, features = ["thread_rng"] }
