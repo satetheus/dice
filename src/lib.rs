@@ -37,11 +37,11 @@ pub mod roll_dice {
                 let solved_value = match token {
                     Token::Operator(n) => {
                         let values = solve_stack.split_off(solve_stack.len().saturating_sub(2));
-                        Self::do_operation(values, n).unwrap_or(0)
+                        Self::do_operation(values, *n).unwrap_or(0)
                     }
                     Token::UnaryOp(n) => {
                         let values = solve_stack.split_off(solve_stack.len().saturating_sub(1));
-                        Self::do_operation(values, n).unwrap_or(0)
+                        Self::do_operation(values, *n).unwrap_or(0)
                     }
                     Token::Value(n) => *n,
                     other_token => {
@@ -57,8 +57,8 @@ pub mod roll_dice {
 
         //TODO this should be a private function. Its a helper function for roll
         #[must_use]
-        pub fn do_operation(mut values: Vec<Token>, operation: &char) -> Option<i64> {
-            let val1_default = i64::from(operation == &'d');
+        fn do_operation(mut values: Vec<Token>, operation: char) -> Option<i64> {
+            let val1_default = i64::from(operation == 'd');
             let val2 = get_value(values.pop().as_ref(), 0);
             let val1 = get_value(values.pop().as_ref(), val1_default);
 
@@ -177,45 +177,34 @@ pub mod roll_dice {
 
         #[must_use]
         pub fn shunting_yard(self) -> Self {
-            let mut op_stack: Vec<Token> = vec![];
+            let mut op_stack: Vec<Token> = Vec::new();
             let mut out_stack: Vec<Token> = Vec::new();
 
             for token in self.0 {
                 match token {
                     Token::Value(_) => out_stack.push(token),
                     Token::Operator(_) | Token::UnaryOp(_) => {
-                        while !op_stack.is_empty() {
-                            let popped_op = op_stack.pop_if(|x| x.get_order() > token.get_order());
-                            match popped_op {
-                                Some(op) => {
-                                    out_stack.push(op);
-                                }
-                                None => break,
-                            }
+                        while let Some(op) = op_stack.pop_if(|x| x.get_order() > token.get_order())
+                        {
+                            out_stack.push(op);
                         }
                         op_stack.push(token);
                     }
                     Token::OpenParenthesis => op_stack.push(token),
                     Token::CloseParenthesis => {
-                        while !op_stack.is_empty() {
-                            let popped_op = op_stack.pop();
-                            match popped_op {
-                                Some(op) => {
-                                    if op == Token::OpenParenthesis {
-                                        break;
-                                    }
-                                    out_stack.push(op);
-                                }
-                                None => break,
+                        while let Some(op) = op_stack.pop() {
+                            if op == Token::OpenParenthesis {
+                                break;
                             }
+                            out_stack.push(op);
                         }
                     }
                     Token::None => {}
                 }
             }
 
-            while !op_stack.is_empty() {
-                out_stack.push(op_stack.pop().unwrap_or(Token::None));
+            while let Some(op) = op_stack.pop() {
+                out_stack.push(op);
             }
 
             Self(out_stack)
