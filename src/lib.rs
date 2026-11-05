@@ -139,9 +139,8 @@ pub mod roll_dice {
                             _ => Token::Value(new_digit),
                         }
                     }
-                    //TODO 'd' can also be a UnaryOp (ex: d20)
-                    'd' | '*' | '/' => Token::Operator(current_char),
-                    '+' | '-' => {
+                    '*' | '/' => Token::Operator(current_char),
+                    'd' | '+' | '-' => {
                         tokens
                             .last()
                             .map_or(Token::UnaryOp(current_char), |op| match op {
@@ -293,6 +292,10 @@ pub mod roll_dice {
                     Token::Operator('+'),
                 ]))
             );
+            assert_eq!(
+                Tokens::from("d20"),
+                Tokens(Vec::from([Token::Value(20), Token::UnaryOp('d'),]))
+            );
         }
 
         #[test]
@@ -415,6 +418,10 @@ pub mod roll_dice {
                     Token::Operator('+'),
                 ]))
             );
+            assert_eq!(
+                Dice::try_from(Tokens::from("d20")).unwrap(),
+                Dice(Vec::from([Token::Value(20), Token::UnaryOp('d'),]))
+            );
         }
 
         #[test]
@@ -432,6 +439,13 @@ pub mod roll_dice {
             assert!(
                 *test_roll >= [Token::Value(2)].to_vec()
                     && *test_roll <= [Token::Value(5)].to_vec()
+            );
+
+            let test_dice = Dice::try_from(Tokens::from("d20")).unwrap();
+            let test_roll = &test_dice.roll();
+            assert!(
+                *test_roll >= [Token::Value(1)].to_vec()
+                    && *test_roll <= [Token::Value(20)].to_vec()
             );
         }
 
