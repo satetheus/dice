@@ -329,6 +329,15 @@ pub mod roll_dice {
                     Token::Operator('+'),
                 ]))
             );
+            assert_eq!(
+                Tokens::from("5*d6").shunting_yard(),
+                Tokens(Vec::from([
+                    Token::Value(5),
+                    Token::Value(6),
+                    Token::UnaryOp('d'),
+                    Token::Operator('*'),
+                ]))
+            );
         }
         #[test]
         fn test_shunting_yard_parenthesis() {
@@ -390,6 +399,27 @@ pub mod roll_dice {
                     Token::Operator('*'),
                 ]))
             );
+            assert_eq!(
+                Tokens(Vec::from([
+                    Token::Value(3),
+                    Token::Operator('*'),
+                    Token::OpenParenthesis,
+                    Token::UnaryOp('d'),
+                    Token::Value(6),
+                    Token::Operator('+'),
+                    Token::Value(4),
+                    Token::CloseParenthesis,
+                ]))
+                .shunting_yard(),
+                Tokens(Vec::from([
+                    Token::Value(3),
+                    Token::Value(6),
+                    Token::UnaryOp('d'),
+                    Token::Value(4),
+                    Token::Operator('+'),
+                    Token::Operator('*'),
+                ]))
+            );
         }
 
         #[test]
@@ -438,6 +468,13 @@ pub mod roll_dice {
                 *test_roll >= [Token::Value(1)].to_vec()
                     && *test_roll <= [Token::Value(20)].to_vec()
             );
+
+            let test_dice = Dice::try_from(Tokens::from("3*(d6+4)")).unwrap();
+            let test_roll = &test_dice.roll();
+            assert!(
+                *test_roll >= [Token::Value(15)].to_vec()
+                    && *test_roll <= [Token::Value(30)].to_vec()
+            );
         }
 
         #[test]
@@ -476,6 +513,12 @@ pub mod roll_dice {
                 Some(0)
             );
             assert_eq!(Dice::do_operation(vec![Token::Value(1)], '-'), Some(-1));
+        }
+
+        #[test]
+        fn test_do_operation_d_unary() {
+            let test_op = Dice::do_operation(vec![Token::Value(20)], 'd');
+            assert!(test_op > Some(0) && test_op < Some(21));
         }
     }
 }
