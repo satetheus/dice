@@ -235,241 +235,242 @@ pub mod roll_dice {
             _ => default,
         }
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use crate::roll_dice::{Dice, Token, Tokens};
+    #[cfg(test)]
+    mod tests {
+        use crate::roll_dice::{Dice, Token, Tokens};
 
-    #[test]
-    fn test_tokenization() {
-        assert_eq!(
-            Tokens::from("1 d10"),
-            Tokens(Vec::from([
-                Token::Value(1),
-                Token::Value(10),
-                Token::Operator('d'),
-            ]))
-        );
-        assert_eq!(
-            Tokens::from("1d20"),
-            Tokens(Vec::from([
-                Token::Value(1),
-                Token::Value(20),
-                Token::Operator('d'),
-            ]))
-        );
-        assert_eq!(
-            Tokens::from("1d20+1"),
-            Tokens(Vec::from([
-                Token::Value(1),
-                Token::Value(20),
-                Token::Operator('d'),
-                Token::Value(1),
-                Token::Operator('+'),
-            ]))
-        );
-        assert_eq!(
-            Tokens::from("-1+2d4*(5-1)"),
-            Tokens(Vec::from([
-                Token::Value(1),
-                Token::UnaryOp('-'),
-                Token::Value(2),
-                Token::Value(4),
-                Token::Operator('d'),
-                Token::Value(5),
-                Token::Value(1),
-                Token::Operator('-'),
-                Token::Operator('*'),
-                Token::Operator('+'),
-            ]))
-        );
-        assert_eq!(
-            Tokens::from("-1+(-1)"),
-            Tokens(Vec::from([
-                Token::Value(1),
-                Token::UnaryOp('-'),
-                Token::Value(1),
-                Token::UnaryOp('-'),
-                Token::Operator('+'),
-            ]))
-        );
-    }
+        #[test]
+        fn test_tokenization() {
+            assert_eq!(
+                Tokens::from("1 d10"),
+                Tokens(Vec::from([
+                    Token::Value(1),
+                    Token::Value(10),
+                    Token::Operator('d'),
+                ]))
+            );
+            assert_eq!(
+                Tokens::from("1d20"),
+                Tokens(Vec::from([
+                    Token::Value(1),
+                    Token::Value(20),
+                    Token::Operator('d'),
+                ]))
+            );
+            assert_eq!(
+                Tokens::from("1d20+1"),
+                Tokens(Vec::from([
+                    Token::Value(1),
+                    Token::Value(20),
+                    Token::Operator('d'),
+                    Token::Value(1),
+                    Token::Operator('+'),
+                ]))
+            );
+            assert_eq!(
+                Tokens::from("-1+2d4*(5-1)"),
+                Tokens(Vec::from([
+                    Token::Value(1),
+                    Token::UnaryOp('-'),
+                    Token::Value(2),
+                    Token::Value(4),
+                    Token::Operator('d'),
+                    Token::Value(5),
+                    Token::Value(1),
+                    Token::Operator('-'),
+                    Token::Operator('*'),
+                    Token::Operator('+'),
+                ]))
+            );
+            assert_eq!(
+                Tokens::from("-1+(-1)"),
+                Tokens(Vec::from([
+                    Token::Value(1),
+                    Token::UnaryOp('-'),
+                    Token::Value(1),
+                    Token::UnaryOp('-'),
+                    Token::Operator('+'),
+                ]))
+            );
+        }
 
-    #[test]
-    fn test_shunting_yard() {
-        assert_eq!(
-            Tokens(Vec::from([
-                Token::Value(1),
-                Token::Operator('d'),
-                Token::Value(10),
-            ]))
-            .shunting_yard(),
-            Tokens(Vec::from([
-                Token::Value(1),
-                Token::Value(10),
-                Token::Operator('d'),
-            ]))
-        );
-        assert_eq!(
-            Tokens(Vec::from([
-                Token::Value(2),
-                Token::Operator('d'),
-                Token::Value(6),
-                Token::Operator('+'),
-                Token::Value(1),
-                Token::Operator('d'),
-                Token::Value(4),
-                Token::Operator('-'),
-                Token::Value(2),
-            ]))
-            .shunting_yard(),
-            Tokens(Vec::from([
-                Token::Value(2),
-                Token::Value(6),
-                Token::Operator('d'),
-                Token::Value(1),
-                Token::Value(4),
-                Token::Operator('d'),
-                Token::Value(2),
-                Token::Operator('-'),
-                Token::Operator('+'),
-            ]))
-        );
-    }
-    #[test]
-    fn test_shunting_yard_parenthesis() {
-        assert_eq!(
-            Tokens(Vec::from([
-                Token::Value(1),
-                Token::Operator('d'),
-                Token::Value(4),
-                Token::Operator('*'),
-                Token::OpenParenthesis,
-                Token::Value(5),
-                Token::Operator('-'),
-                Token::Value(1),
-                Token::Operator('d'),
-                Token::Value(4),
-                Token::CloseParenthesis,
-            ]))
-            .shunting_yard(),
-            Tokens(Vec::from([
-                Token::Value(1),
-                Token::Value(4),
-                Token::Operator('d'),
-                Token::Value(5),
-                Token::Value(1),
-                Token::Value(4),
-                Token::Operator('d'),
-                Token::Operator('-'),
-                Token::Operator('*'),
-            ]))
-        );
-        assert_eq!(
-            Tokens(Vec::from([
-                Token::OpenParenthesis,
-                Token::Value(1),
-                Token::Operator('d'),
-                Token::Value(4),
-                Token::CloseParenthesis,
-                Token::Operator('*'),
-                Token::OpenParenthesis,
-                Token::OpenParenthesis,
-                Token::Value(5),
-                Token::Operator('-'),
-                Token::Value(1),
-                Token::Operator('d'),
-                Token::Value(4),
-                Token::CloseParenthesis,
-                Token::CloseParenthesis,
-            ]))
-            .shunting_yard(),
-            Tokens(Vec::from([
-                Token::Value(1),
-                Token::Value(4),
-                Token::Operator('d'),
-                Token::Value(5),
-                Token::Value(1),
-                Token::Value(4),
-                Token::Operator('d'),
-                Token::Operator('-'),
-                Token::Operator('*'),
-            ]))
-        );
-    }
+        #[test]
+        fn test_shunting_yard() {
+            assert_eq!(
+                Tokens(Vec::from([
+                    Token::Value(1),
+                    Token::Operator('d'),
+                    Token::Value(10),
+                ]))
+                .shunting_yard(),
+                Tokens(Vec::from([
+                    Token::Value(1),
+                    Token::Value(10),
+                    Token::Operator('d'),
+                ]))
+            );
+            assert_eq!(
+                Tokens(Vec::from([
+                    Token::Value(2),
+                    Token::Operator('d'),
+                    Token::Value(6),
+                    Token::Operator('+'),
+                    Token::Value(1),
+                    Token::Operator('d'),
+                    Token::Value(4),
+                    Token::Operator('-'),
+                    Token::Value(2),
+                ]))
+                .shunting_yard(),
+                Tokens(Vec::from([
+                    Token::Value(2),
+                    Token::Value(6),
+                    Token::Operator('d'),
+                    Token::Value(1),
+                    Token::Value(4),
+                    Token::Operator('d'),
+                    Token::Value(2),
+                    Token::Operator('-'),
+                    Token::Operator('+'),
+                ]))
+            );
+        }
+        #[test]
+        fn test_shunting_yard_parenthesis() {
+            assert_eq!(
+                Tokens(Vec::from([
+                    Token::Value(1),
+                    Token::Operator('d'),
+                    Token::Value(4),
+                    Token::Operator('*'),
+                    Token::OpenParenthesis,
+                    Token::Value(5),
+                    Token::Operator('-'),
+                    Token::Value(1),
+                    Token::Operator('d'),
+                    Token::Value(4),
+                    Token::CloseParenthesis,
+                ]))
+                .shunting_yard(),
+                Tokens(Vec::from([
+                    Token::Value(1),
+                    Token::Value(4),
+                    Token::Operator('d'),
+                    Token::Value(5),
+                    Token::Value(1),
+                    Token::Value(4),
+                    Token::Operator('d'),
+                    Token::Operator('-'),
+                    Token::Operator('*'),
+                ]))
+            );
+            assert_eq!(
+                Tokens(Vec::from([
+                    Token::OpenParenthesis,
+                    Token::Value(1),
+                    Token::Operator('d'),
+                    Token::Value(4),
+                    Token::CloseParenthesis,
+                    Token::Operator('*'),
+                    Token::OpenParenthesis,
+                    Token::OpenParenthesis,
+                    Token::Value(5),
+                    Token::Operator('-'),
+                    Token::Value(1),
+                    Token::Operator('d'),
+                    Token::Value(4),
+                    Token::CloseParenthesis,
+                    Token::CloseParenthesis,
+                ]))
+                .shunting_yard(),
+                Tokens(Vec::from([
+                    Token::Value(1),
+                    Token::Value(4),
+                    Token::Operator('d'),
+                    Token::Value(5),
+                    Token::Value(1),
+                    Token::Value(4),
+                    Token::Operator('d'),
+                    Token::Operator('-'),
+                    Token::Operator('*'),
+                ]))
+            );
+        }
 
-    #[test]
-    fn test_dice_from() {
-        assert_eq!(
-            Dice::try_from(Tokens::from("-1+2d4*(5-1)")).unwrap(),
-            Dice(Vec::from([
-                Token::Value(1),
-                Token::UnaryOp('-'),
-                Token::Value(2),
-                Token::Value(4),
-                Token::Operator('d'),
-                Token::Value(5),
-                Token::Value(1),
-                Token::Operator('-'),
-                Token::Operator('*'),
-                Token::Operator('+'),
-            ]))
-        );
-    }
+        #[test]
+        fn test_dice_from() {
+            assert_eq!(
+                Dice::try_from(Tokens::from("-1+2d4*(5-1)")).unwrap(),
+                Dice(Vec::from([
+                    Token::Value(1),
+                    Token::UnaryOp('-'),
+                    Token::Value(2),
+                    Token::Value(4),
+                    Token::Operator('d'),
+                    Token::Value(5),
+                    Token::Value(1),
+                    Token::Operator('-'),
+                    Token::Operator('*'),
+                    Token::Operator('+'),
+                ]))
+            );
+        }
 
-    #[test]
-    fn test_dice_from_fails_missing_d() {
-        assert_eq!(
-            Dice::try_from(Tokens::from("1+1")),
-            Err("Dice notation could not be parsed".to_string())
-        );
-    }
+        #[test]
+        fn test_dice_from_fails_missing_d() {
+            assert_eq!(
+                Dice::try_from(Tokens::from("1+1")),
+                Err("Dice notation could not be parsed".to_string())
+            );
+        }
 
-    #[test]
-    fn test_roll() {
-        let test_dice = Dice::try_from(Tokens::from("1d4+1")).unwrap();
-        let test_roll = &test_dice.roll();
-        assert!(
-            *test_roll >= [Token::Value(2)].to_vec() && *test_roll <= [Token::Value(5)].to_vec()
-        );
-    }
+        #[test]
+        fn test_roll() {
+            let test_dice = Dice::try_from(Tokens::from("1d4+1")).unwrap();
+            let test_roll = &test_dice.roll();
+            assert!(
+                *test_roll >= [Token::Value(2)].to_vec()
+                    && *test_roll <= [Token::Value(5)].to_vec()
+            );
+        }
 
-    #[test]
-    fn test_do_operation() {
-        assert!(Dice::do_operation(vec![Token::Value(1), Token::Value(4)], &'d') <= Some(4));
-        assert!(Dice::do_operation(vec![Token::Value(1), Token::Value(4)], &'d') >= Some(1));
-        assert!(Dice::do_operation(vec![Token::Value(20)], &'d') >= Some(1));
-        assert!(Dice::do_operation(vec![Token::Value(20)], &'d') <= Some(20));
+        #[test]
+        fn test_do_operation() {
+            assert!(Dice::do_operation(vec![Token::Value(1), Token::Value(4)], 'd') <= Some(4));
+            assert!(Dice::do_operation(vec![Token::Value(1), Token::Value(4)], 'd') >= Some(1));
+            assert!(Dice::do_operation(vec![Token::Value(20)], 'd') >= Some(1));
+            assert!(Dice::do_operation(vec![Token::Value(20)], 'd') <= Some(20));
 
-        assert_eq!(
-            Dice::do_operation(vec![Token::Value(2), Token::Value(2)], &'*'),
-            Some(4)
-        );
-        assert_eq!(
-            Dice::do_operation(vec![Token::Value(-2), Token::Value(2)], &'*'),
-            Some(-4)
-        );
+            assert_eq!(
+                Dice::do_operation(vec![Token::Value(2), Token::Value(2)], '*'),
+                Some(4)
+            );
+            assert_eq!(
+                Dice::do_operation(vec![Token::Value(-2), Token::Value(2)], '*'),
+                Some(-4)
+            );
 
-        assert_eq!(
-            Dice::do_operation(vec![Token::Value(15), Token::Value(5)], &'/'),
-            Some(3)
-        );
-        assert_eq!(
-            Dice::do_operation(vec![Token::Value(7), Token::Value(2)], &'/'),
-            Some(3)
-        );
+            assert_eq!(
+                Dice::do_operation(vec![Token::Value(15), Token::Value(5)], '/'),
+                Some(3)
+            );
+            assert_eq!(
+                Dice::do_operation(vec![Token::Value(7), Token::Value(2)], '/'),
+                Some(3)
+            );
 
-        assert_eq!(
-            Dice::do_operation(vec![Token::Value(1), Token::Value(1)], &'+'),
-            Some(2)
-        );
-        assert_eq!(Dice::do_operation(vec![Token::Value(1)], &'+'), Some(1));
+            assert_eq!(
+                Dice::do_operation(vec![Token::Value(1), Token::Value(1)], '+'),
+                Some(2)
+            );
+            assert_eq!(Dice::do_operation(vec![Token::Value(1)], '+'), Some(1));
 
-        assert_eq!(
-            Dice::do_operation(vec![Token::Value(1), Token::Value(1)], &'-'),
-            Some(0)
-        );
-        assert_eq!(Dice::do_operation(vec![Token::Value(1)], &'-'), Some(-1));
+            assert_eq!(
+                Dice::do_operation(vec![Token::Value(1), Token::Value(1)], '-'),
+                Some(0)
+            );
+            assert_eq!(Dice::do_operation(vec![Token::Value(1)], '-'), Some(-1));
+        }
     }
 }
