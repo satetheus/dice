@@ -19,12 +19,14 @@ pub mod roll_dice {
         type Error = String;
 
         fn try_from(input: Tokens) -> Result<Self, Self::Error> {
-            if input.validate() {
-                Ok(Self(input.0))
-            } else {
-                //TODO set this to include better feedback
-                Err("Dice notation could not be parsed".to_string())
+            // TODO! more than this check will eventually be needed, but it's is a start
+            if !input.0.contains(&Token::Operator('d')) && !input.0.contains(&Token::UnaryOp('d')) {
+                return Err(
+                    "Supplied dice notation does not contain a dice symbol: 'd'".to_string()
+                );
             }
+
+            Ok(Self(input.0))
         }
     }
 
@@ -55,7 +57,6 @@ pub mod roll_dice {
             solve_stack
         }
 
-        //TODO this should be a private function. Its a helper function for roll
         #[must_use]
         fn do_operation(mut values: Vec<Token>, operation: char) -> Option<i64> {
             let val1_default = i64::from(operation == 'd');
@@ -162,16 +163,6 @@ pub mod roll_dice {
             }
 
             Self(tokens)
-        }
-
-        fn validate(&self) -> bool {
-            // TODO! more than this check will eventually be needed, but it's is a start
-            if !self.0.contains(&Token::Operator('d')) {
-                println!("Supplied dice notation does not contain a dice symbol: 'd'");
-                return false;
-            }
-
-            true
         }
 
         #[must_use]
@@ -428,7 +419,7 @@ pub mod roll_dice {
         fn test_dice_from_fails_missing_d() {
             assert_eq!(
                 Dice::try_from(Tokens::from("1+1")),
-                Err("Dice notation could not be parsed".to_string())
+                Err("Supplied dice notation does not contain a dice symbol: 'd'".to_string())
             );
         }
 
