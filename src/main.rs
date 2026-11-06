@@ -1,5 +1,5 @@
 #! /usr/bin/env rustc
-use dice::roll_dice::{Dice, Tokens};
+use dice::roll_dice::Dice;
 use std::env;
 
 fn main() {
@@ -16,7 +16,7 @@ fn main() {
         .into_iter()
         .filter(|n| !n.contains("--"))
         .collect::<String>();
-    let dice = Dice::try_from(Tokens::from(joined.as_str()));
+    let dice = Dice::try_from(joined.as_str());
 
     match dice {
         Ok(n) => {

@@ -2,6 +2,11 @@
 pub mod roll_dice {
     use rand::distr::{Distribution, Uniform};
 
+    #[derive(Clone, Eq, PartialEq, Debug)]
+    pub struct Dice(pub Vec<Token>);
+
+    //TODO! move Token to its own file & set up a direct conversion from
+    // &str to dice
     #[derive(Clone, Eq, PartialEq, PartialOrd, Debug)]
     pub enum Token {
         Value(i64),
@@ -12,21 +17,19 @@ pub mod roll_dice {
         None,
     }
 
-    #[derive(Clone, Eq, PartialEq, Debug)]
-    pub struct Dice(pub Vec<Token>);
-
-    impl TryFrom<Tokens> for Dice {
+    impl TryFrom<&str> for Dice {
         type Error = String;
 
-        fn try_from(input: Tokens) -> Result<Self, Self::Error> {
-            // TODO! more than this check will eventually be needed, but it's is a start
-            if !input.0.contains(&Token::Operator('d')) && !input.0.contains(&Token::UnaryOp('d')) {
+        fn try_from(input: &str) -> Result<Self, Self::Error> {
+            if !input.contains('d') {
                 return Err(
                     "Supplied dice notation does not contain a dice symbol: 'd'".to_string()
                 );
             }
 
-            Ok(Self(input.0))
+            let tokens = tokenize(input);
+
+            Ok(Self(tokens.shunting_yard()))
         }
     }
 
@@ -112,65 +115,57 @@ pub mod roll_dice {
         overflow.0
     }
 
-    #[derive(Eq, PartialEq, Debug)]
-    pub struct Tokens(pub Vec<Token>);
+    fn tokenize(input: &str) -> Vec<Token> {
+        let mut chars = input.chars().peekable();
+        let mut tokens: Vec<Token> = Vec::new();
 
-    impl From<&str> for Tokens {
-        fn from(input: &str) -> Self {
-            let tokens = Self::tokenize(input);
-
-            tokens.shunting_yard()
+        while let Some(&current_char) = chars.peek() {
+            let new_token = match current_char {
+                '0'..='9' => {
+                    let prev_digit = tokens.pop_if(|x| matches!(*x, Token::Value { .. }));
+                    let new_digit = i64::from(current_char.to_digit(10).unwrap_or(0));
+                    match prev_digit {
+                        Some(Token::Value(n)) => {
+                            Token::Value(overflow_op('+', overflow_op('*', 10, n), new_digit))
+                        }
+                        _ => Token::Value(new_digit),
+                    }
+                }
+                '*' | '/' => Token::Operator(current_char),
+                'd' | '+' | '-' => {
+                    tokens
+                        .last()
+                        .map_or(Token::UnaryOp(current_char), |op| match op {
+                            Token::Operator(_) | Token::OpenParenthesis => {
+                                Token::UnaryOp(current_char)
+                            }
+                            _ => Token::Operator(current_char),
+                        })
+                }
+                '(' => Token::OpenParenthesis,
+                ')' => Token::CloseParenthesis,
+                _ => {
+                    println!("skipping character '{current_char}'");
+                    Token::None
+                }
+            };
+            tokens.push(new_token);
+            chars.next();
         }
+
+        tokens
     }
 
-    impl Tokens {
-        fn tokenize(input: &str) -> Self {
-            let mut chars = input.chars().peekable();
-            let mut tokens: Vec<Token> = Vec::new();
+    trait ShuntingYardExt {
+        fn shunting_yard(self) -> Self;
+    }
 
-            while let Some(&current_char) = chars.peek() {
-                let new_token = match current_char {
-                    '0'..='9' => {
-                        let prev_digit = tokens.pop_if(|x| matches!(*x, Token::Value { .. }));
-                        let new_digit = i64::from(current_char.to_digit(10).unwrap_or(0));
-                        match prev_digit {
-                            Some(Token::Value(n)) => {
-                                Token::Value(overflow_op('+', overflow_op('*', 10, n), new_digit))
-                            }
-                            _ => Token::Value(new_digit),
-                        }
-                    }
-                    '*' | '/' => Token::Operator(current_char),
-                    'd' | '+' | '-' => {
-                        tokens
-                            .last()
-                            .map_or(Token::UnaryOp(current_char), |op| match op {
-                                Token::Operator(_) | Token::OpenParenthesis => {
-                                    Token::UnaryOp(current_char)
-                                }
-                                _ => Token::Operator(current_char),
-                            })
-                    }
-                    '(' => Token::OpenParenthesis,
-                    ')' => Token::CloseParenthesis,
-                    _ => {
-                        println!("skipping character '{current_char}'");
-                        Token::None
-                    }
-                };
-                tokens.push(new_token);
-                chars.next();
-            }
+    impl ShuntingYardExt for Vec<Token> {
+        fn shunting_yard(self) -> Self {
+            let mut op_stack: Self = Self::new();
+            let mut out_stack: Self = Self::new();
 
-            Self(tokens)
-        }
-
-        #[must_use]
-        pub fn shunting_yard(self) -> Self {
-            let mut op_stack: Vec<Token> = Vec::new();
-            let mut out_stack: Vec<Token> = Vec::new();
-
-            for token in self.0 {
+            for token in self {
                 match token {
                     Token::Value(_) => out_stack.push(token),
                     Token::Operator(_) | Token::UnaryOp(_) => {
@@ -197,7 +192,7 @@ pub mod roll_dice {
                 out_stack.push(op);
             }
 
-            Self(out_stack)
+            out_stack
         }
     }
 
@@ -228,39 +223,39 @@ pub mod roll_dice {
 
     #[cfg(test)]
     mod tests {
-        use crate::roll_dice::{Dice, Token, Tokens};
+        use crate::roll_dice::{Dice, ShuntingYardExt, Token};
 
         #[test]
         fn test_tokenization() {
             assert_eq!(
-                Tokens::from("1 d10"),
-                Tokens(Vec::from([
+                Dice::try_from("1 d10"),
+                Ok(Dice(Vec::from([
                     Token::Value(1),
                     Token::Value(10),
                     Token::Operator('d'),
-                ]))
+                ])))
             );
             assert_eq!(
-                Tokens::from("1d20"),
-                Tokens(Vec::from([
+                Dice::try_from("1d20"),
+                Ok(Dice(Vec::from([
                     Token::Value(1),
                     Token::Value(20),
                     Token::Operator('d'),
-                ]))
+                ])))
             );
             assert_eq!(
-                Tokens::from("1d20+1"),
-                Tokens(Vec::from([
+                Dice::try_from("1d20+1"),
+                Ok(Dice(Vec::from([
                     Token::Value(1),
                     Token::Value(20),
                     Token::Operator('d'),
                     Token::Value(1),
                     Token::Operator('+'),
-                ]))
+                ])))
             );
             assert_eq!(
-                Tokens::from("-1+2d4*(5-1)"),
-                Tokens(Vec::from([
+                Dice::try_from("-1+2d4*(5-1)"),
+                Ok(Dice(Vec::from([
                     Token::Value(1),
                     Token::UnaryOp('-'),
                     Token::Value(2),
@@ -271,41 +266,35 @@ pub mod roll_dice {
                     Token::Operator('-'),
                     Token::Operator('*'),
                     Token::Operator('+'),
-                ]))
+                ])))
             );
             assert_eq!(
-                Tokens::from("-1+(-1)"),
-                Tokens(Vec::from([
+                Dice::try_from("d10-1+(-1)"),
+                Ok(Dice(Vec::from([
+                    Token::Value(10),
+                    Token::UnaryOp('d'),
                     Token::Value(1),
-                    Token::UnaryOp('-'),
                     Token::Value(1),
                     Token::UnaryOp('-'),
                     Token::Operator('+'),
-                ]))
+                    Token::Operator('-'),
+                ])))
             );
             assert_eq!(
-                Tokens::from("d20"),
-                Tokens(Vec::from([Token::Value(20), Token::UnaryOp('d'),]))
+                Dice::try_from("d20"),
+                Ok(Dice(Vec::from([Token::Value(20), Token::UnaryOp('d'),])))
             );
         }
 
         #[test]
         fn test_shunting_yard() {
             assert_eq!(
-                Tokens(Vec::from([
-                    Token::Value(1),
-                    Token::Operator('d'),
-                    Token::Value(10),
-                ]))
-                .shunting_yard(),
-                Tokens(Vec::from([
-                    Token::Value(1),
-                    Token::Value(10),
-                    Token::Operator('d'),
-                ]))
+                Vec::from([Token::Value(1), Token::Operator('d'), Token::Value(10),])
+                    .shunting_yard(),
+                Vec::from([Token::Value(1), Token::Value(10), Token::Operator('d'),])
             );
             assert_eq!(
-                Tokens(Vec::from([
+                Vec::from([
                     Token::Value(2),
                     Token::Operator('d'),
                     Token::Value(6),
@@ -315,9 +304,9 @@ pub mod roll_dice {
                     Token::Value(4),
                     Token::Operator('-'),
                     Token::Value(2),
-                ]))
+                ])
                 .shunting_yard(),
-                Tokens(Vec::from([
+                Vec::from([
                     Token::Value(2),
                     Token::Value(6),
                     Token::Operator('d'),
@@ -327,11 +316,11 @@ pub mod roll_dice {
                     Token::Value(2),
                     Token::Operator('-'),
                     Token::Operator('+'),
-                ]))
+                ])
             );
             assert_eq!(
-                Tokens::from("5*d6").shunting_yard(),
-                Tokens(Vec::from([
+                Dice::try_from("5*d6").unwrap(),
+                Dice(Vec::from([
                     Token::Value(5),
                     Token::Value(6),
                     Token::UnaryOp('d'),
@@ -342,7 +331,7 @@ pub mod roll_dice {
         #[test]
         fn test_shunting_yard_parenthesis() {
             assert_eq!(
-                Tokens(Vec::from([
+                Vec::from([
                     Token::Value(1),
                     Token::Operator('d'),
                     Token::Value(4),
@@ -354,9 +343,9 @@ pub mod roll_dice {
                     Token::Operator('d'),
                     Token::Value(4),
                     Token::CloseParenthesis,
-                ]))
+                ])
                 .shunting_yard(),
-                Tokens(Vec::from([
+                Vec::from([
                     Token::Value(1),
                     Token::Value(4),
                     Token::Operator('d'),
@@ -366,10 +355,10 @@ pub mod roll_dice {
                     Token::Operator('d'),
                     Token::Operator('-'),
                     Token::Operator('*'),
-                ]))
+                ])
             );
             assert_eq!(
-                Tokens(Vec::from([
+                Vec::from([
                     Token::OpenParenthesis,
                     Token::Value(1),
                     Token::Operator('d'),
@@ -385,9 +374,9 @@ pub mod roll_dice {
                     Token::Value(4),
                     Token::CloseParenthesis,
                     Token::CloseParenthesis,
-                ]))
+                ])
                 .shunting_yard(),
-                Tokens(Vec::from([
+                Vec::from([
                     Token::Value(1),
                     Token::Value(4),
                     Token::Operator('d'),
@@ -397,10 +386,10 @@ pub mod roll_dice {
                     Token::Operator('d'),
                     Token::Operator('-'),
                     Token::Operator('*'),
-                ]))
+                ])
             );
             assert_eq!(
-                Tokens(Vec::from([
+                Vec::from([
                     Token::Value(3),
                     Token::Operator('*'),
                     Token::OpenParenthesis,
@@ -409,23 +398,23 @@ pub mod roll_dice {
                     Token::Operator('+'),
                     Token::Value(4),
                     Token::CloseParenthesis,
-                ]))
+                ])
                 .shunting_yard(),
-                Tokens(Vec::from([
+                Vec::from([
                     Token::Value(3),
                     Token::Value(6),
                     Token::UnaryOp('d'),
                     Token::Value(4),
                     Token::Operator('+'),
                     Token::Operator('*'),
-                ]))
+                ])
             );
         }
 
         #[test]
         fn test_dice_from() {
             assert_eq!(
-                Dice::try_from(Tokens::from("-1+2d4*(5-1)")).unwrap(),
+                Dice::try_from("-1+2d4*(5-1)").unwrap(),
                 Dice(Vec::from([
                     Token::Value(1),
                     Token::UnaryOp('-'),
@@ -440,7 +429,7 @@ pub mod roll_dice {
                 ]))
             );
             assert_eq!(
-                Dice::try_from(Tokens::from("d20")).unwrap(),
+                Dice::try_from("d20").unwrap(),
                 Dice(Vec::from([Token::Value(20), Token::UnaryOp('d'),]))
             );
         }
@@ -448,28 +437,28 @@ pub mod roll_dice {
         #[test]
         fn test_dice_from_fails_missing_d() {
             assert_eq!(
-                Dice::try_from(Tokens::from("1+1")),
+                Dice::try_from("1+1"),
                 Err("Supplied dice notation does not contain a dice symbol: 'd'".to_string())
             );
         }
 
         #[test]
         fn test_roll() {
-            let test_dice = Dice::try_from(Tokens::from("1d4+1")).unwrap();
+            let test_dice = Dice::try_from("1d4+1").unwrap();
             let test_roll = &test_dice.roll();
             assert!(
                 *test_roll >= [Token::Value(2)].to_vec()
                     && *test_roll <= [Token::Value(5)].to_vec()
             );
 
-            let test_dice = Dice::try_from(Tokens::from("d20")).unwrap();
+            let test_dice = Dice::try_from("d20").unwrap();
             let test_roll = &test_dice.roll();
             assert!(
                 *test_roll >= [Token::Value(1)].to_vec()
                     && *test_roll <= [Token::Value(20)].to_vec()
             );
 
-            let test_dice = Dice::try_from(Tokens::from("3*(d6+4)")).unwrap();
+            let test_dice = Dice::try_from("3*(d6+4)").unwrap();
             let test_roll = &test_dice.roll();
             assert!(
                 *test_roll >= [Token::Value(15)].to_vec()
