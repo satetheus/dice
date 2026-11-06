@@ -1,5 +1,5 @@
 #! /usr/bin/env rustc
-use dice::roll_dice::Dice;
+use dice::Dice;
 use std::env;
 
 fn main() {
