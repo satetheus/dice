@@ -4,8 +4,6 @@ use rand::distr::{Distribution, Uniform};
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Dice(pub Vec<Token>);
 
-//TODO! move Token to its own file & set up a direct conversion from
-// &str to dice
 #[derive(Clone, Eq, PartialEq, PartialOrd, Debug)]
 pub enum Token {
     Value(i64),
@@ -25,6 +23,20 @@ impl TryFrom<&str> for Dice {
         }
 
         let tokens = tokenize(input);
+
+        for i in 0..tokens.len() {
+            let next = tokens.get(i.saturating_add(1)).unwrap_or(&Token::None);
+            match tokens.get(i).unwrap_or(&Token::None) {
+                Token::Operator(n) | Token::UnaryOp(n)
+                    if matches!(next, Token::Operator(_))
+                        | matches!(next, Token::CloseParenthesis)
+                        | matches!(next, Token::None) =>
+                {
+                    return Err(format!("Operator '{n}' cannot be followed by {next:?}"));
+                }
+                _ => (),
+            }
+        }
 
         Ok(Self(tokens.shunting_yard()))
     }
@@ -275,6 +287,18 @@ mod tests {
         assert_eq!(
             Dice::try_from("d20"),
             Ok(Dice(Vec::from([Token::Value(20), Token::UnaryOp('d'),])))
+        );
+    }
+
+    #[test]
+    fn test_tokenization_negative_cases() {
+        assert_eq!(
+            Dice::try_from("1d"),
+            Err("Operator 'd' cannot be followed by None".to_string()),
+        );
+        assert_eq!(
+            Dice::try_from("1d10-"),
+            Err("Operator '-' cannot be followed by None".to_string()),
         );
     }
 
