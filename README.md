@@ -39,3 +39,9 @@ This program supports basic [dice notation](https://en.wikipedia.org/wiki/Dice_n
 
 
 ### Roadmap:
+| Version | Additions                                                                                           |
+|---------|-----------------------------------------------------------------------------------------------------|
+| 0.4.0   | 'k' notation, which can be used to roll with advantage & disadvantage. Example: "2d20kh" & "2d20kl" |
+| 0.5.0   | ',' notation, allowing multiple separated rolls. Example: "1d10,1d20"                               |
+| 0.6.0   | 'c' notation, allowing display of count number of times each side was rolled. Example: "10d10c"     |
+| 0.7.0   | '{}' notation, allowing custom symbols for dice sides. Example: "1d{' ','-','+'}" (fate dice)       |
