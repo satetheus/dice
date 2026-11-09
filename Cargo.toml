@@ -1,10 +1,38 @@
 [package]
 name = "dice"
+authors = ["satetheus <developer@cwmccullough.com>"]
 version = "0.1.0"
 edition = "2021"
+description = "A dice roller cli tool. Parses dice notation & rolls the desired dice."
+readme = "README.md"
+repository = "https://github.com/satetheus/dice"
+license = "Apache-2.0"
+keywords = ["dice", "tabletop"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+arithmetic_side_effects = "deny"
+unreachable = "deny"
+unimplemented = "deny"
+unchecked_time_subtraction = "deny"
+todo = "deny"
+string_slice = "deny"
+panic_in_result_fn = "deny"
+panic = "deny"
+exit = "deny"
+as_conversions = "deny"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
 
 [dependencies]
-rand = "0.8.5"
-regex = "1.10.3"
+rand = { version = "0.10.3", default-features = false, features = ["thread_rng"] }
