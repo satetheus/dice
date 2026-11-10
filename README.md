@@ -4,19 +4,24 @@ Simple utility to roll dice from the command line/terminal using dice notation.
 ## Installation
 ### Linux AMD64 Releases
   - Download latest binary: [link](https://github.com/satetheus/dice/releases/latest/download/dice_amd64)
-  - Rename `dice_amd64` to `dice` & move it to /usr/bin/ if you would like to call it like: `dice 1d10`
+  - Rename `dice_amd64` to `dice` & move it to /usr/bin/ if you would like to call it like: `dice 1d10`. Otherwise it will be `dice_amd64 1d10`
 
 ### Windows Releases
-  - Download latest binary: [link](https://github.com/satetheus/dice/releases/latest/download/dice.exe)
+1. Download latest binary: [link](https://github.com/satetheus/dice/releases/latest/download/dice.exe)
+2. To run the file, run something like the following in powershell:
+    ```powershell
+    & "C:\Users\YOU\PATH_TO\dice.exe" 1d20
+    ```
+    where `YOU` is your username & `PATH_TO` is the path to the file.
 
 ### Mac Releases
   - Download latest binary: [link](https://github.com/satetheus/dice/releases/latest/download/dice_darwin)
-  - Rename `dice_darwin` to `dice` & move it to /usr/bin/ if you would like to call it like: `dice 1d10`
+  - Rename `dice_darwin` to `dice` & move it to /usr/bin/ if you would like to call it like: `dice 1d10`. Otherwise it will be `dice_darwin 1d10`
 
 ### Compile binary
   - [Install Rust](https://rustup.rs/) if not already installed
   - Clone repo
-  - Run `cargo build -r`
+  - In the repo directory run `cargo build -r`
   - The binary will be "targets/releases/dice", you can move this to /usr/bin/ or use it in place
 
 ## Usage
@@ -26,6 +31,9 @@ This program supports basic [dice notation](https://en.wikipedia.org/wiki/Dice_n
  - `dice d20` will "roll" one dice with 20 sides.
  - `dice 100d20+1` will "roll" 100 dice with 20 sides & add 1 to each.
  - `dice 20d37-24` will "roll" 20 dice with 37 sides & subtract 24 from each.
+ - `dice (1d10)d(1d10)` will "roll" 1-10 dice with 1-10 sides (all dice will have the same number of sides).
+ - `dice 1d10*1d10` will "roll" 2 dice with 10 sides each & multiply them together.
+ - `dice 1d20/2` will "roll" 1 dice & divide the result by 2, ignoring remainders.
 
 ### Supported Symbols:
 | Symbol | description                                                                                          | example                               |
