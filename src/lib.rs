@@ -9,6 +9,8 @@ pub enum Token {
     Value(i64),
     Operator(char),
     UnaryOp(char),
+    Modifier(char),
+    UnaryMod(char),
     OpenParenthesis,
     CloseParenthesis,
     None,
@@ -141,7 +143,9 @@ fn tokenize(input: &str) -> Vec<Token> {
                 }
             }
             '*' | '/' => Token::Operator(current_char),
-            'd' | '+' | '-' => tokens
+            'd' | '+' | '-' | 'k' => tokens // TODO! Unary & Binary operations/modifiers won't be
+                // good enough for long. Keep notation inherently can
+                // support a trivial number of arguments.
                 .last()
                 .map_or(Token::UnaryOp(current_char), |op| match op {
                     Token::Operator(_) | Token::OpenParenthesis => Token::UnaryOp(current_char),
@@ -149,6 +153,10 @@ fn tokenize(input: &str) -> Vec<Token> {
                 }),
             '(' => Token::OpenParenthesis,
             ')' => Token::CloseParenthesis,
+            'h' | 'l' => match tokens.last().unwrap_or(&Token::None) {
+                Token::Value(_) => Token::Modifier(current_char),
+                _ => Token::UnaryMod(current_char),
+            },
             _ => {
                 println!("skipping character '{current_char}'");
                 Token::None
@@ -173,7 +181,10 @@ impl ShuntingYardExt for Vec<Token> {
         for token in self {
             match token {
                 Token::Value(_) => out_stack.push(token),
-                Token::Operator(_) | Token::UnaryOp(_) => {
+                Token::Operator(_)
+                | Token::UnaryOp(_)
+                | Token::Modifier(_)
+                | Token::UnaryMod(_) => {
                     while let Some(op) = op_stack.pop_if(|x| x.get_order() > token.get_order()) {
                         out_stack.push(op);
                     }
@@ -208,11 +219,13 @@ impl Token {
                 '*' | '/' => 2,
                 '^' => 3,
                 'd' => 4,
+                'k' => 5,
                 _ => -1,
             },
             // UnaryOp order is subject to change, but must be higher than d &
             // the other standard math operators
             Self::UnaryOp(_) => 10,
+            Self::Modifier(_) | Self::UnaryMod(_) => 6,
             _ => -1,
         }
     }
@@ -446,6 +459,31 @@ mod tests {
         assert_eq!(
             Dice::try_from("d20").unwrap(),
             Dice(Vec::from([Token::Value(20), Token::UnaryOp('d'),]))
+        );
+    }
+
+    #[test]
+    fn test_dice_from_keep_notation() {
+        assert_eq!(
+            Dice::try_from("2d20kh").unwrap(),
+            Dice(Vec::from([
+                Token::Value(2),
+                Token::Value(20),
+                Token::UnaryMod('h'),
+                Token::Operator('k'),
+                Token::Operator('d'),
+            ]))
+        );
+
+        assert_eq!(
+            Dice::try_from("2d20kl").unwrap(),
+            Dice(Vec::from([
+                Token::Value(2),
+                Token::Value(20),
+                Token::UnaryMod('l'),
+                Token::Operator('k'),
+                Token::Operator('d'),
+            ]))
         );
     }
 
