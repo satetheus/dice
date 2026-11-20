@@ -9,11 +9,18 @@ pub enum Token {
     Value(i64),
     Operator(char),
     UnaryOp(char),
-    Modifier(char),
     UnaryMod(char),
     OpenParenthesis,
     CloseParenthesis,
+    Keep(Keep),
     None,
+}
+
+#[derive(Clone, Eq, PartialEq, PartialOrd, Debug)]
+pub enum Keep {
+    High(i64),
+    Low(i64),
+    All,
 }
 
 impl TryFrom<&str> for Dice {
@@ -53,11 +60,19 @@ impl Dice {
             let solved_value = match token {
                 Token::Operator(n) => {
                     let values = solve_stack.split_off(solve_stack.len().saturating_sub(2));
-                    Self::do_operation(values, *n).unwrap_or(0)
+                    if *n == 'd' {
+                        Self::dice_operation(values, &Token::Keep(Keep::All)).unwrap_or(0)
+                    } else {
+                        Self::do_operation(values, *n).unwrap_or(0)
+                    }
                 }
                 Token::UnaryOp(n) => {
                     let values = solve_stack.split_off(solve_stack.len().saturating_sub(1));
-                    Self::do_operation(values, *n).unwrap_or(0)
+                    if *n == 'd' {
+                        Self::dice_operation(values, &Token::Keep(Keep::All)).unwrap_or(0)
+                    } else {
+                        Self::do_operation(values, *n).unwrap_or(0)
+                    }
                 }
                 Token::Value(n) => *n,
                 other_token => {
@@ -73,36 +88,41 @@ impl Dice {
 
     #[must_use]
     fn do_operation(mut values: Vec<Token>, operation: char) -> Option<i64> {
-        let val1_default = i64::from(operation == 'd');
         let val2 = get_value(values.pop().as_ref(), 0);
-        let val1 = get_value(values.pop().as_ref(), val1_default);
+        let val1 = get_value(values.pop().as_ref(), 0);
 
         match operation {
-            'd' => {
-                let mut rng = rand::rng();
-                let die_size = Uniform::new_inclusive(1, val2);
-                match die_size {
-                    Ok(size) => {
-                        let mut output: i64 = 0;
-
-                        for _ in 1..=val1 {
-                            output = overflow_op('+', output, size.sample(&mut rng));
-                        }
-
-                        Some(output)
-                    }
-                    Err(e) => {
-                        println!("Not a valid dice range: {e}");
-                        None
-                    }
-                }
-            }
             '*' => Some(overflow_op('*', val1, val2)),
             '/' => Some(overflow_op('/', val1, val2)),
             '+' => Some(overflow_op('+', val1, val2)),
             '-' => Some(overflow_op('-', val1, val2)),
             other => {
                 println!("unrecognized operation: {other}");
+                None
+            }
+        }
+    }
+
+    fn dice_operation(mut values: Vec<Token>, _keep: &Token) -> Option<i64> {
+        let val2 = get_value(values.pop().as_ref(), 0);
+        let val1 = get_value(values.pop().as_ref(), 1);
+
+        //TODO! add match for modifiers
+
+        let mut rng = rand::rng();
+        let die_size = Uniform::new_inclusive(1, val2);
+        match die_size {
+            Ok(size) => {
+                let mut output: i64 = 0;
+
+                for _ in 1..=val1 {
+                    output = overflow_op('+', output, size.sample(&mut rng));
+                }
+
+                Some(output)
+            }
+            Err(e) => {
+                println!("Not a valid dice range: {e}");
                 None
             }
         }
@@ -143,9 +163,7 @@ fn tokenize(input: &str) -> Vec<Token> {
                 }
             }
             '*' | '/' => Token::Operator(current_char),
-            'd' | '+' | '-' | 'k' => tokens // TODO! Unary & Binary operations/modifiers won't be
-                // good enough for long. Keep notation inherently can
-                // support a trivial number of arguments.
+            'd' | '+' | '-' => tokens
                 .last()
                 .map_or(Token::UnaryOp(current_char), |op| match op {
                     Token::Operator(_) | Token::OpenParenthesis => Token::UnaryOp(current_char),
@@ -153,10 +171,26 @@ fn tokenize(input: &str) -> Vec<Token> {
                 }),
             '(' => Token::OpenParenthesis,
             ')' => Token::CloseParenthesis,
-            'h' | 'l' => match tokens.last().unwrap_or(&Token::None) {
-                Token::Value(_) => Token::Modifier(current_char),
-                _ => Token::UnaryMod(current_char),
+            'h' => match tokens
+                .pop_if(|val| matches!(*val, Token::Value { .. }))
+                .unwrap_or(Token::None)
+            {
+                Token::Value(n) => Token::Keep(Keep::High(n)),
+                _ => Token::Keep(Keep::High(1)),
             },
+            'l' => match tokens
+                .pop_if(|val| matches!(*val, Token::Value { .. }))
+                .unwrap_or(Token::None)
+            {
+                Token::Value(n) => Token::Keep(Keep::Low(n)),
+                _ => Token::Keep(Keep::Low(1)),
+            },
+            'k' => {
+                // This is skipped because drop notation will not be
+                // implemented & the 'k' char is just a separator between the
+                // second dice operand & the number to keep.
+                Token::None
+            }
             _ => {
                 println!("skipping character '{current_char}'");
                 Token::None
@@ -180,11 +214,8 @@ impl ShuntingYardExt for Vec<Token> {
 
         for token in self {
             match token {
-                Token::Value(_) => out_stack.push(token),
-                Token::Operator(_)
-                | Token::UnaryOp(_)
-                | Token::Modifier(_)
-                | Token::UnaryMod(_) => {
+                Token::Value(_) | Token::Keep(_) => out_stack.push(token),
+                Token::Operator(_) | Token::UnaryOp(_) | Token::UnaryMod(_) => {
                     while let Some(op) = op_stack.pop_if(|x| x.get_order() > token.get_order()) {
                         out_stack.push(op);
                     }
@@ -219,13 +250,12 @@ impl Token {
                 '*' | '/' => 2,
                 '^' => 3,
                 'd' => 4,
-                'k' => 5,
                 _ => -1,
             },
+            Self::Keep(_) => 5,
             // UnaryOp order is subject to change, but must be higher than d &
             // the other standard math operators
             Self::UnaryOp(_) => 10,
-            Self::Modifier(_) | Self::UnaryMod(_) => 6,
             _ => -1,
         }
     }
@@ -240,7 +270,7 @@ const fn get_value(input: Option<&Token>, default: i64) -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Dice, ShuntingYardExt, Token};
+    use crate::{Dice, Keep, ShuntingYardExt, Token};
 
     #[test]
     fn test_tokenization() {
@@ -469,8 +499,7 @@ mod tests {
             Dice(Vec::from([
                 Token::Value(2),
                 Token::Value(20),
-                Token::UnaryMod('h'),
-                Token::Operator('k'),
+                Token::Keep(Keep::High(1)),
                 Token::Operator('d'),
             ]))
         );
@@ -480,8 +509,7 @@ mod tests {
             Dice(Vec::from([
                 Token::Value(2),
                 Token::Value(20),
-                Token::UnaryMod('l'),
-                Token::Operator('k'),
+                Token::Keep(Keep::Low(1)),
                 Token::Operator('d'),
             ]))
         );
@@ -517,12 +545,40 @@ mod tests {
     }
 
     #[test]
-    fn test_do_operation() {
-        assert!(Dice::do_operation(vec![Token::Value(1), Token::Value(4)], 'd') <= Some(4));
-        assert!(Dice::do_operation(vec![Token::Value(1), Token::Value(4)], 'd') >= Some(1));
-        assert!(Dice::do_operation(vec![Token::Value(20)], 'd') >= Some(1));
-        assert!(Dice::do_operation(vec![Token::Value(20)], 'd') <= Some(20));
+    fn test_roll_keep_notation() {
+        let test_dice = Dice::try_from("2d20kh").unwrap();
+        let test_roll = &test_dice.roll();
+        assert!(
+            *test_roll >= [Token::Value(1)].to_vec() && *test_roll <= [Token::Value(20)].to_vec()
+        );
 
+        let test_dice = Dice::try_from("2d20kl").unwrap();
+        let test_roll = &test_dice.roll();
+        assert!(
+            *test_roll >= [Token::Value(1)].to_vec() && *test_roll <= [Token::Value(20)].to_vec()
+        );
+    }
+
+    #[test]
+    fn test_dice_operation() {
+        assert!(
+            Dice::dice_operation(
+                vec![Token::Value(1), Token::Value(4)],
+                &Token::Keep(Keep::All)
+            ) <= Some(4)
+        );
+        assert!(
+            Dice::dice_operation(
+                vec![Token::Value(1), Token::Value(4)],
+                &Token::Keep(Keep::All)
+            ) >= Some(1)
+        );
+        assert!(Dice::dice_operation(vec![Token::Value(20)], &Token::Keep(Keep::All)) >= Some(1));
+        assert!(Dice::dice_operation(vec![Token::Value(20)], &Token::Keep(Keep::All)) <= Some(20));
+    }
+
+    #[test]
+    fn test_do_operation() {
         assert_eq!(
             Dice::do_operation(vec![Token::Value(2), Token::Value(2)], '*'),
             Some(4)
@@ -555,8 +611,8 @@ mod tests {
     }
 
     #[test]
-    fn test_do_operation_d_unary() {
-        let test_op = Dice::do_operation(vec![Token::Value(20)], 'd');
+    fn test_dice_operation_unary() {
+        let test_op = Dice::dice_operation(vec![Token::Value(20)], &Token::Keep(Keep::All));
         assert!(test_op > Some(0) && test_op < Some(21));
     }
 }
