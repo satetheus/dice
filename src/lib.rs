@@ -7,8 +7,7 @@ pub struct Dice(pub Vec<Token>);
 #[derive(Clone, Eq, PartialEq, PartialOrd, Debug)]
 pub enum Token {
     Value(i64),
-    Operator(char),
-    UnaryOp(char),
+    Operator(char, usize),
     UnaryMod(char),
     OpenParenthesis,
     CloseParenthesis,
@@ -36,8 +35,8 @@ impl TryFrom<&str> for Dice {
         for i in 0..tokens.len() {
             let next = tokens.get(i.saturating_add(1)).unwrap_or(&Token::None);
             match tokens.get(i).unwrap_or(&Token::None) {
-                Token::Operator(n) | Token::UnaryOp(n)
-                    if matches!(next, Token::Operator(_))
+                Token::Operator(n, _)
+                    if matches!(next, Token::Operator(_, 2))
                         | matches!(next, Token::CloseParenthesis)
                         | matches!(next, Token::None) =>
                 {
@@ -58,16 +57,8 @@ impl Dice {
 
         for token in &self.0 {
             let solved_value = match token {
-                Token::Operator(n) => {
-                    let values = solve_stack.split_off(solve_stack.len().saturating_sub(2));
-                    if *n == 'd' {
-                        Self::dice_operation(values, &Token::Keep(Keep::All)).unwrap_or(0)
-                    } else {
-                        Self::do_operation(values, *n).unwrap_or(0)
-                    }
-                }
-                Token::UnaryOp(n) => {
-                    let values = solve_stack.split_off(solve_stack.len().saturating_sub(1));
+                Token::Operator(n, vals) => {
+                    let values = solve_stack.split_off(solve_stack.len().saturating_sub(*vals));
                     if *n == 'd' {
                         Self::dice_operation(values, &Token::Keep(Keep::All)).unwrap_or(0)
                     } else {
@@ -151,51 +142,54 @@ fn tokenize(input: &str) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
 
     while let Some(&current_char) = chars.peek() {
-        let new_token = match current_char {
-            '0'..='9' => {
-                let prev_digit = tokens.pop_if(|x| matches!(*x, Token::Value { .. }));
-                let new_digit = i64::from(current_char.to_digit(10).unwrap_or(0));
-                match prev_digit {
-                    Some(Token::Value(n)) => {
-                        Token::Value(overflow_op('+', overflow_op('*', 10, n), new_digit))
+        let new_token =
+            match current_char {
+                '0'..='9' => {
+                    let prev_digit = tokens.pop_if(|x| matches!(*x, Token::Value { .. }));
+                    let new_digit = i64::from(current_char.to_digit(10).unwrap_or(0));
+                    match prev_digit {
+                        Some(Token::Value(n)) => {
+                            Token::Value(overflow_op('+', overflow_op('*', 10, n), new_digit))
+                        }
+                        _ => Token::Value(new_digit),
                     }
-                    _ => Token::Value(new_digit),
                 }
-            }
-            '*' | '/' => Token::Operator(current_char),
-            'd' | '+' | '-' => tokens
-                .last()
-                .map_or(Token::UnaryOp(current_char), |op| match op {
-                    Token::Operator(_) | Token::OpenParenthesis => Token::UnaryOp(current_char),
-                    _ => Token::Operator(current_char),
-                }),
-            '(' => Token::OpenParenthesis,
-            ')' => Token::CloseParenthesis,
-            'h' => match tokens
-                .pop_if(|val| matches!(*val, Token::Value { .. }))
-                .unwrap_or(Token::None)
-            {
-                Token::Value(n) => Token::Keep(Keep::High(n)),
-                _ => Token::Keep(Keep::High(1)),
-            },
-            'l' => match tokens
-                .pop_if(|val| matches!(*val, Token::Value { .. }))
-                .unwrap_or(Token::None)
-            {
-                Token::Value(n) => Token::Keep(Keep::Low(n)),
-                _ => Token::Keep(Keep::Low(1)),
-            },
-            'k' => {
-                // This is skipped because drop notation will not be
-                // implemented & the 'k' char is just a separator between the
-                // second dice operand & the number to keep.
-                Token::None
-            }
-            _ => {
-                println!("skipping character '{current_char}'");
-                Token::None
-            }
-        };
+                '*' | '/' => Token::Operator(current_char, 2),
+                'd' | '+' | '-' => tokens
+                    .last()
+                    .map_or(Token::Operator(current_char, 1), |op| match op {
+                        Token::Operator(_, _) | Token::OpenParenthesis => {
+                            Token::Operator(current_char, 1)
+                        }
+                        _ => Token::Operator(current_char, 2),
+                    }),
+                '(' => Token::OpenParenthesis,
+                ')' => Token::CloseParenthesis,
+                'h' => match tokens
+                    .pop_if(|val| matches!(*val, Token::Value { .. }))
+                    .unwrap_or(Token::None)
+                {
+                    Token::Value(n) => Token::Keep(Keep::High(n)),
+                    _ => Token::Keep(Keep::High(1)),
+                },
+                'l' => match tokens
+                    .pop_if(|val| matches!(*val, Token::Value { .. }))
+                    .unwrap_or(Token::None)
+                {
+                    Token::Value(n) => Token::Keep(Keep::Low(n)),
+                    _ => Token::Keep(Keep::Low(1)),
+                },
+                'k' => {
+                    // This is skipped because drop notation will not be
+                    // implemented & the 'k' char is just a separator between the
+                    // second dice operand & the number to keep.
+                    Token::None
+                }
+                _ => {
+                    println!("skipping character '{current_char}'");
+                    Token::None
+                }
+            };
         tokens.push(new_token);
         chars.next();
     }
@@ -215,7 +209,7 @@ impl ShuntingYardExt for Vec<Token> {
         for token in self {
             match token {
                 Token::Value(_) | Token::Keep(_) => out_stack.push(token),
-                Token::Operator(_) | Token::UnaryOp(_) | Token::UnaryMod(_) => {
+                Token::Operator(_, _) | Token::UnaryMod(_) => {
                     while let Some(op) = op_stack.pop_if(|x| x.get_order() > token.get_order()) {
                         out_stack.push(op);
                     }
@@ -245,7 +239,10 @@ impl ShuntingYardExt for Vec<Token> {
 impl Token {
     const fn get_order(&self) -> i16 {
         match self {
-            Self::Operator(op) => match op {
+            // UnaryOp order is subject to change, but must be higher than d &
+            // the other standard math operators
+            Self::Operator(_, 1) => 10,
+            Self::Operator(op, _) => match op {
                 '+' | '-' => 1,
                 '*' | '/' => 2,
                 '^' => 3,
@@ -253,9 +250,6 @@ impl Token {
                 _ => -1,
             },
             Self::Keep(_) => 5,
-            // UnaryOp order is subject to change, but must be higher than d &
-            // the other standard math operators
-            Self::UnaryOp(_) => 10,
             _ => -1,
         }
     }
@@ -279,7 +273,7 @@ mod tests {
             Ok(Dice(Vec::from([
                 Token::Value(1),
                 Token::Value(10),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
             ])))
         );
         assert_eq!(
@@ -287,7 +281,7 @@ mod tests {
             Ok(Dice(Vec::from([
                 Token::Value(1),
                 Token::Value(20),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
             ])))
         );
         assert_eq!(
@@ -295,41 +289,43 @@ mod tests {
             Ok(Dice(Vec::from([
                 Token::Value(1),
                 Token::Value(20),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(1),
-                Token::Operator('+'),
+                Token::Operator('+', 2),
             ])))
         );
         assert_eq!(
             Dice::try_from("-1+2d4*(5-1)"),
             Ok(Dice(Vec::from([
                 Token::Value(1),
-                Token::UnaryOp('-'),
+                Token::Operator('-', 1),
                 Token::Value(2),
                 Token::Value(4),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(5),
                 Token::Value(1),
-                Token::Operator('-'),
-                Token::Operator('*'),
-                Token::Operator('+'),
+                Token::Operator('-', 2),
+                Token::Operator('*', 2),
+                Token::Operator('+', 2),
             ])))
         );
         assert_eq!(
             Dice::try_from("d10-1+(-1)"),
             Ok(Dice(Vec::from([
                 Token::Value(10),
-                Token::UnaryOp('d'),
+                Token::Operator('d', 1),
                 Token::Value(1),
                 Token::Value(1),
-                Token::UnaryOp('-'),
-                Token::Operator('+'),
-                Token::Operator('-'),
+                Token::Operator('-', 1),
+                Token::Operator('+', 2),
+                Token::Operator('-', 2),
             ])))
         );
         assert_eq!(
             Dice::try_from("d20"),
-            Ok(Dice(Vec::from([Token::Value(20), Token::UnaryOp('d'),])))
+            Ok(Dice(Vec::from(
+                [Token::Value(20), Token::Operator('d', 1),]
+            )))
         );
     }
 
@@ -348,32 +344,33 @@ mod tests {
     #[test]
     fn test_shunting_yard() {
         assert_eq!(
-            Vec::from([Token::Value(1), Token::Operator('d'), Token::Value(10),]).shunting_yard(),
-            Vec::from([Token::Value(1), Token::Value(10), Token::Operator('d'),])
+            Vec::from([Token::Value(1), Token::Operator('d', 2), Token::Value(10),])
+                .shunting_yard(),
+            Vec::from([Token::Value(1), Token::Value(10), Token::Operator('d', 2),])
         );
         assert_eq!(
             Vec::from([
                 Token::Value(2),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(6),
-                Token::Operator('+'),
+                Token::Operator('+', 2),
                 Token::Value(1),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(4),
-                Token::Operator('-'),
+                Token::Operator('-', 2),
                 Token::Value(2),
             ])
             .shunting_yard(),
             Vec::from([
                 Token::Value(2),
                 Token::Value(6),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(1),
                 Token::Value(4),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(2),
-                Token::Operator('-'),
-                Token::Operator('+'),
+                Token::Operator('-', 2),
+                Token::Operator('+', 2),
             ])
         );
         assert_eq!(
@@ -381,8 +378,8 @@ mod tests {
             Dice(Vec::from([
                 Token::Value(5),
                 Token::Value(6),
-                Token::UnaryOp('d'),
-                Token::Operator('*'),
+                Token::Operator('d', 1),
+                Token::Operator('*', 2),
             ]))
         );
     }
@@ -391,14 +388,14 @@ mod tests {
         assert_eq!(
             Vec::from([
                 Token::Value(1),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(4),
-                Token::Operator('*'),
+                Token::Operator('*', 2),
                 Token::OpenParenthesis,
                 Token::Value(5),
-                Token::Operator('-'),
+                Token::Operator('-', 2),
                 Token::Value(1),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(4),
                 Token::CloseParenthesis,
             ])
@@ -406,29 +403,29 @@ mod tests {
             Vec::from([
                 Token::Value(1),
                 Token::Value(4),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(5),
                 Token::Value(1),
                 Token::Value(4),
-                Token::Operator('d'),
-                Token::Operator('-'),
-                Token::Operator('*'),
+                Token::Operator('d', 2),
+                Token::Operator('-', 2),
+                Token::Operator('*', 2),
             ])
         );
         assert_eq!(
             Vec::from([
                 Token::OpenParenthesis,
                 Token::Value(1),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(4),
                 Token::CloseParenthesis,
-                Token::Operator('*'),
+                Token::Operator('*', 2),
                 Token::OpenParenthesis,
                 Token::OpenParenthesis,
                 Token::Value(5),
-                Token::Operator('-'),
+                Token::Operator('-', 2),
                 Token::Value(1),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(4),
                 Token::CloseParenthesis,
                 Token::CloseParenthesis,
@@ -437,23 +434,23 @@ mod tests {
             Vec::from([
                 Token::Value(1),
                 Token::Value(4),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(5),
                 Token::Value(1),
                 Token::Value(4),
-                Token::Operator('d'),
-                Token::Operator('-'),
-                Token::Operator('*'),
+                Token::Operator('d', 2),
+                Token::Operator('-', 2),
+                Token::Operator('*', 2),
             ])
         );
         assert_eq!(
             Vec::from([
                 Token::Value(3),
-                Token::Operator('*'),
+                Token::Operator('*', 2),
                 Token::OpenParenthesis,
-                Token::UnaryOp('d'),
+                Token::Operator('d', 1),
                 Token::Value(6),
-                Token::Operator('+'),
+                Token::Operator('+', 2),
                 Token::Value(4),
                 Token::CloseParenthesis,
             ])
@@ -461,10 +458,10 @@ mod tests {
             Vec::from([
                 Token::Value(3),
                 Token::Value(6),
-                Token::UnaryOp('d'),
+                Token::Operator('d', 1),
                 Token::Value(4),
-                Token::Operator('+'),
-                Token::Operator('*'),
+                Token::Operator('+', 2),
+                Token::Operator('*', 2),
             ])
         );
     }
@@ -475,20 +472,20 @@ mod tests {
             Dice::try_from("-1+2d4*(5-1)").unwrap(),
             Dice(Vec::from([
                 Token::Value(1),
-                Token::UnaryOp('-'),
+                Token::Operator('-', 1),
                 Token::Value(2),
                 Token::Value(4),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
                 Token::Value(5),
                 Token::Value(1),
-                Token::Operator('-'),
-                Token::Operator('*'),
-                Token::Operator('+'),
+                Token::Operator('-', 2),
+                Token::Operator('*', 2),
+                Token::Operator('+', 2),
             ]))
         );
         assert_eq!(
             Dice::try_from("d20").unwrap(),
-            Dice(Vec::from([Token::Value(20), Token::UnaryOp('d'),]))
+            Dice(Vec::from([Token::Value(20), Token::Operator('d', 1),]))
         );
     }
 
@@ -500,7 +497,7 @@ mod tests {
                 Token::Value(2),
                 Token::Value(20),
                 Token::Keep(Keep::High(1)),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
             ]))
         );
 
@@ -510,7 +507,7 @@ mod tests {
                 Token::Value(2),
                 Token::Value(20),
                 Token::Keep(Keep::Low(1)),
-                Token::Operator('d'),
+                Token::Operator('d', 2),
             ]))
         );
     }
