@@ -15,7 +15,7 @@ pub enum Token {
     None,
 }
 
-#[derive(Clone, Eq, PartialEq, PartialOrd, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Debug)]
 pub enum Keep {
     High(i64),
     Low(i64),
@@ -56,22 +56,29 @@ impl Dice {
         let mut solve_stack: Vec<Token> = Vec::new();
 
         for token in &self.0 {
-            let solved_value = match token {
+            match token {
                 Token::Operator(n, vals) => {
+                    let keep = solve_stack
+                        .pop_if(|n| matches!(n, Token::Keep(_)))
+                        .unwrap_or(Token::Keep(Keep::All));
                     let values = solve_stack.split_off(solve_stack.len().saturating_sub(*vals));
-                    if *n == 'd' {
-                        Self::dice_operation(values, &Token::Keep(Keep::All)).unwrap_or(0)
+                    let val = if *n == 'd' {
+                        Token::Value(Self::dice_operation(values, &keep).unwrap_or(0))
                     } else {
-                        Self::do_operation(values, *n).unwrap_or(0)
-                    }
+                        Token::Value(Self::do_operation(values, *n).unwrap_or(0))
+                    };
+                    solve_stack.push(val);
                 }
-                Token::Value(n) => *n,
+                Token::Value(n) => {
+                    solve_stack.push(Token::Value(*n));
+                }
+                Token::Keep(n) => {
+                    solve_stack.push(Token::Keep(*n));
+                }
                 other_token => {
                     println!("Invalid Token found: {other_token:?}");
-                    0
                 }
-            };
-            solve_stack.push(Token::Value(solved_value));
+            }
         }
 
         solve_stack
@@ -94,7 +101,7 @@ impl Dice {
         }
     }
 
-    fn dice_operation(mut values: Vec<Token>, _keep: &Token) -> Option<i64> {
+    fn dice_operation(mut values: Vec<Token>, keep: &Token) -> Option<i64> {
         let val2 = get_value(values.pop().as_ref(), 0);
         let val1 = get_value(values.pop().as_ref(), 1);
 
