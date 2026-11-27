@@ -105,16 +105,42 @@ impl Dice {
         let val2 = get_value(values.pop().as_ref(), 0);
         let val1 = get_value(values.pop().as_ref(), 1);
 
-        //TODO! add match for modifiers
-
         let mut rng = rand::rng();
         let die_size = Uniform::new_inclusive(1, val2);
         match die_size {
             Ok(size) => {
                 let mut output: i64 = 0;
 
-                for _ in 1..=val1 {
-                    output = overflow_op('+', output, size.sample(&mut rng));
+                match keep {
+                    Token::Keep(Keep::High(n)) => {
+                        let mut highs = vec![0; usize::try_from(*n).unwrap_or(1)];
+                        for _ in 1..=val1 {
+                            let new_num = size.sample(&mut rng);
+                            let highs_index: Option<usize> =
+                                highs.iter().position(|&val| val < new_num);
+                            if let Some(val) = highs_index {
+                                let _ = std::mem::replace(&mut highs[val], new_num);
+                            }
+                        }
+                        output = highs.into_iter().sum();
+                    }
+                    Token::Keep(Keep::Low(n)) => {
+                        let mut lows = vec![val2; usize::try_from(*n).unwrap_or(1)];
+                        for _ in 1..=val1 {
+                            let new_num = size.sample(&mut rng);
+                            let lows_index: Option<usize> =
+                                lows.iter().position(|&val| val > new_num);
+                            if let Some(val) = lows_index {
+                                let _ = std::mem::replace(&mut lows[val], new_num);
+                            }
+                        }
+                        output = lows.into_iter().sum();
+                    }
+                    _ => {
+                        for _ in 1..=val1 {
+                            output = overflow_op('+', output, size.sample(&mut rng));
+                        }
+                    }
                 }
 
                 Some(output)
